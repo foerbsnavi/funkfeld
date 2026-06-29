@@ -1,0 +1,29 @@
+# Funkfeld — persönliche/lokale Daten gehören nicht ins öffentliche Repo
+
+# Konfiguration (enthält Passwort-Hash, ggf. API-Schlüssel) + Login-Bremse + App-Schlüssel
+data/config.json
+data/dashboard.json
+data/dashboards.json
+data/login.json
+data/key.bin
+data/chat.json
+
+# Nutzerinhalte und Cache
+data/blocks/*
+data/files/*
+data/cache/*
+data/*.lock
+
+# Mehr-Dashboard-Struktur: komplette Nutzerdaten je Dashboard (config.json, key.bin, blocks …)
+data/d/
+
+# Schutz-.htaccess in den Datenordnern aber BEHALTEN
+!data/blocks/.htaccess
+!data/files/.htaccess
+!data/cache/.htaccess
+
+# versehentlich verschachteltes Datenverzeichnis (lokales Artefakt)
+data/data/
+
+# internes Arbeitsdokument
+funkfeld_funktionen.txt

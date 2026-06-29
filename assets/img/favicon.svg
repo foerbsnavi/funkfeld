@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Funkfeld">
+  <rect width="32" height="32" rx="7" fill="#11181f"/>
+  <circle cx="11" cy="21" r="3" fill="#ea6b17"/>
+  <path d="M11 14a7 7 0 0 1 7 7" fill="none" stroke="#ea6b17" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M11 9a12 12 0 0 1 12 12" fill="none" stroke="#ea6b17" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

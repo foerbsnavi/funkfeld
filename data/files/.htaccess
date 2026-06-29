@@ -1,0 +1,8 @@
+# Funkfeld — Datei-Zwischenlager gesperrt (kein direkter Web-Zugriff; Download nur über api.php)
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

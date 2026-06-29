@@ -1,0 +1,48 @@
+# Funkfeld — Root-Schutz
+
+# Kein Verzeichnis-Listing
+Options -Indexes
+
+# HTTPS erzwingen (loop-sicher, auch hinter TLS-terminierendem Proxy).
+# Falls der Webspace ausnahmsweise kein HTTPS hat, diesen Block auskommentieren.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Custom-Fläche (action=custom_render) markieren → globale CSP wird dafür ausgesetzt (eigene Sandbox-CSP via PHP)
+    RewriteCond %{QUERY_STRING} (^|&)action=custom_render(&|$)
+    RewriteRule ^ - [E=FF_RAWHTML:1]
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# Doku-/Datendateien nicht direkt ausliefern
+<FilesMatch "\.(json|md)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Statische Assets lange cachen — unbedenklich, weil alle Verweise einen ?v=-Cache-Buster tragen.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+# Ein paar einfache Sicherheits-Header
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "same-origin"
+    Header set Strict-Transport-Security "max-age=31536000"
+    # FF_RAWHTML wird oben per mod_rewrite für action=custom_render gesetzt → globale CSP aussetzen.
+    # Karte: Leaflet von unpkg (Skript+Stil, per SRI gesichert), Kacheln von OSM/Esri/CartoDB.
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'" env=!FF_RAWHTML
+</IfModule>

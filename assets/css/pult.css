@@ -1,0 +1,1138 @@
+/* =========================================================
+   Funkfeld — Stilbasis "Dunkler Steuerstand"
+   ========================================================= */
+
+/* Marken-/Überschriftenschrift: ProtestRevolution (kreidig, wie an der Tafel) */
+@font-face {
+    font-family: 'ProtestRevolution';
+    src: url('../fonts/ProtestRevolution-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    /* Flächen & Hintergrund */
+    --bg:          #0e1116;   /* tiefer Hintergrund */
+    --bg-2:        #131822;   /* Board */
+    --flaeche:     #1a212c;   /* Karten/Flächen */
+    --flaeche-2:   #212a37;   /* erhöhte Flächen */
+    --linie:       #2a3340;   /* Trennlinien/Rahmen */
+    --scroll:       #39414d;  /* Scrollbalken */
+    --scroll-hover: #4b5563;
+
+    /* Text */
+    --text:        #dbe2ec;
+    --text-leise:  #8b97a7;
+
+    /* Instrument-Akzent (bernstein, wie Cockpit-Beleuchtung) */
+    --akzent:      #f0a23a;
+    --akzent-2:    #ffb454;
+    --akzent-kontrast: #1a1206;
+    --akzent-rgb:  240, 162, 58;
+
+    /* Zustände */
+    --fehler:      #ff6b6b;
+    --fehler-rgb:  255, 107, 107;
+
+    /* Maße */
+    --radius:      10px;
+    --radius-klein: 8px;
+    --radius-xs:   6px;
+    --toolbar-h:   52px;
+    --schatten:    0 8px 24px rgba(0, 0, 0, 0.45);
+    --flaeche-gradient: linear-gradient(var(--flaeche-2), var(--flaeche));
+
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-anzeige: 'ProtestRevolution', "Bradley Hand", Georgia, serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    height: 100%;
+}
+
+body {
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbalken: schlank, dezent, abgerundet — nur sichtbar wenn nötig (overflow:auto) */
+* {
+    scrollbar-width: thin;                       /* Firefox */
+    scrollbar-color: var(--scroll) transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background-color: var(--scroll);
+    border-radius: var(--radius-klein);
+    border: 2px solid transparent;               /* macht den Greifer schmaler */
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--scroll-hover); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Bestätigungs-Popup (window.pultConfirm) */
+.pult-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.55);
+}
+.pult-modal {
+    width: 100%;
+    max-width: 360px;
+    padding: 1.25rem;
+    background: var(--flaeche);
+    border: 1px solid var(--linie);
+    border-radius: var(--radius);
+    box-shadow: var(--schatten);
+}
+.pult-modal-text { margin: 0 0 1.1rem; color: var(--text); font-size: 0.95rem; }
+.pult-modal-knoepfe { display: flex; justify-content: flex-end; gap: 0.5rem; }
+.pult-modal-btn {
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--linie);
+    border-radius: var(--radius-klein);
+    background: var(--flaeche-2);
+    color: var(--text);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.pult-modal-btn:hover { border-color: var(--akzent); }
+.pult-modal-btn-gefahr {
+    background: var(--fehler);
+    border-color: var(--fehler);
+    color: #1a0606;
+    font-weight: 600;
+}
+.pult-modal-btn-gefahr:hover { filter: brightness(1.08); border-color: var(--fehler); }
+.pult-modal-btn-haupt { background: var(--akzent); border-color: var(--akzent); color: var(--akzent-kontrast); font-weight: 600; }
+.pult-modal-btn-haupt:hover { background: var(--akzent-2); }
+
+/* Einstellungs-Popup */
+.pe-box { max-width: 420px; max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
+.pe-titel { margin: 0 0 0.25rem; font-size: 1.15rem; color: var(--akzent); }
+.pe-gruppe { margin-top: 0.5rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-leise); border-bottom: 1px solid var(--linie); padding-bottom: 0.2rem; }
+.pe-label { display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.8rem; color: var(--text-leise); }
+.pe-feld { width: 100%; }
+.pe-fehler { margin: 0.25rem 0 0; color: var(--fehler); font-size: 0.85rem; }
+.pe-konten { display: flex; flex-direction: column; gap: 0.6rem; }
+.pe-konto { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.6rem; border: 1px solid var(--linie); border-radius: var(--radius-xs); background: var(--bg-2); }
+.pe-konto-weg, .pe-konto-add { align-self: flex-start; }
+.pe-namen { display: flex; flex-direction: column; gap: 0.4rem; }
+.pe-name { display: flex; gap: 0.4rem; align-items: center; }
+.pe-freigabe { display: flex; flex-direction: column; gap: 0.5rem; }
+.pe-freigabe-knoepfe { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.pe-hinweis { margin: 0; color: var(--text-leise); font-size: 0.85rem; }
+.pe-name .pe-feld { width: auto; flex: 1 1 auto; min-width: 0; }
+.pe-name-weg { flex: 0 0 auto; }
+.pe-box .pult-modal-knoepfe { margin-top: 0.75rem; }
+
+/* Runder Hinzufügen-Knopf (FAB) — fächert die Flächen-Auswahl auf */
+.fab {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 1500;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+.fab-btn {
+    width: 56px;
+    height: 56px;
+    border: none;
+    border-radius: 50%;
+    background: var(--akzent);
+    color: var(--akzent-kontrast);
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+.fab-btn:hover { background: var(--akzent-2); }
+.fab.fab-offen .fab-btn { transform: rotate(45deg); }
+.fab-menu {
+    display: none;
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: stretch;
+    background: var(--flaeche);
+    border: 1px solid var(--linie);
+    border-radius: var(--radius-klein);
+    padding: 0.5rem;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+    max-height: 70vh;
+    overflow-y: auto;
+    min-width: 9rem;
+}
+.fab.fab-offen .fab-menu { display: flex; }
+.fab-item { text-align: left; white-space: nowrap; }
+
+/* Nur für Screenreader (visuell versteckt) */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* ---------------------------------------------------------
+   Login / Installation
+   --------------------------------------------------------- */
+
+.login-body {
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    /* dezenter Steuerstand-Verlauf */
+    background:
+        radial-gradient(1200px 600px at 50% -10%, rgba(var(--akzent-rgb), 0.06), transparent 60%),
+        var(--bg);
+    padding: 1.5rem;
+}
+
+.login-karte {
+    width: 100%;
+    max-width: 340px;
+    background: var(--flaeche);
+    border: 1px solid var(--linie);
+    border-radius: var(--radius);
+    box-shadow: var(--schatten);
+    padding: 2rem 1.75rem;
+    text-align: center;
+}
+
+.login-logo {
+    margin: 0;
+    font-family: var(--font-anzeige);
+    font-size: 2.6rem;
+    letter-spacing: 0.01em;
+    color: var(--akzent);
+}
+
+.login-sub {
+    margin: 0.35rem 0 1.5rem;
+    color: var(--text-leise);
+    font-size: 0.92rem;
+}
+
+.login-fehler {
+    margin: 0 0 1rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--radius-klein);
+    background: rgba(var(--fehler-rgb), 0.12);
+    border: 1px solid rgba(var(--fehler-rgb), 0.35);
+    color: var(--fehler);
+    font-size: 0.88rem;
+}
+
+.login-form {
+    display: grid;
+    gap: 0.5rem;
+    text-align: left;
+}
+
+.login-form label {
+    font-size: 0.82rem;
+    color: var(--text-leise);
+    margin-top: 0.4rem;
+}
+
+.login-form input {
+    width: 100%;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--radius-klein);
+    border: 1px solid var(--linie);
+    background: var(--bg-2);
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.login-form input:focus {
+    outline: 2px solid var(--akzent);
+    outline-offset: 1px;
+    border-color: var(--akzent);
+}
+
+.login-form button {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border: 0;
+    border-radius: var(--radius-klein);
+    background: var(--akzent);
+    color: var(--akzent-kontrast);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.login-form button:hover { background: var(--akzent-2); }
+
+/* Sichtbarer Tastatur-Fokus für Buttons & Flächen (WCAG 2.4.7) */
+.login-form button:focus-visible,
+.tb-btn:focus-visible,
+.fab-btn:focus-visible,
+.flaeche-knopf:focus-visible,
+.flaeche:focus-visible,
+.w-zeile-weg:focus-visible,
+.w-zeile-edit:focus-visible,
+.w-zeile-ok:focus-visible,
+.w-add:focus-visible,
+.w-tab-weg:focus-visible,
+.pult-modal-btn:focus-visible,
+.w-sekundaer-btn:focus-visible,
+.w-mini:focus-visible,
+.w-mail-eintrag:focus-visible {
+    outline: 2px solid var(--akzent);
+    outline-offset: 2px;
+}
+
+/* Roter Gefahr-Knopf: heller Fokus-Ring (Gold wäre auf Rot zu kontrastarm) */
+.pult-modal-btn-gefahr:focus-visible { outline-color: #ffffff; outline-offset: 3px; }
+
+/* Fokus-Indikator für Widget-Eingabefelder (sonst nur unsichtbarer Rahmen).
+   Die Notiz ist bewusst ausgenommen — dort zeigt der Text-Cursor den Fokus an. */
+.w-check-text:focus-visible,
+.w-link-titel:focus-visible,
+.w-link-url:focus-visible,
+.w-tab-kopf:focus-visible,
+.w-tab-zelle:focus-visible,
+.w-tel-feld:focus-visible,
+.w-eingabe:focus-visible {
+    outline: 2px solid var(--akzent);
+    outline-offset: -2px;
+}
+
+/* In Tabellenzellen den Fokus bündig setzen, damit er nicht im Zellrahmen untergeht */
+.w-tab-kopf:focus-visible,
+.w-tab-zelle:focus-visible {
+    outline-offset: 0;
+}
+
+/* ---------------------------------------------------------
+   App: Werkzeugleiste
+   --------------------------------------------------------- */
+
+.app-body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Einheitliche Plattform-Kopfleiste. Farben bewusst fest (nicht via Theme-Variablen),
+   damit die Leiste 1:1 identisch zur CMF-/Account-Topbar (/app/assets/topbar.css) bleibt. */
+.ff-topbar {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    background: linear-gradient(#212a37, #1a212c);
+    border-bottom: 1px solid #2a3340;
+    z-index: 1001;
+}
+.ff-topbar * { box-sizing: border-box; }
+.ff-topbar-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+.ff-marke {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--akzent);
+    text-decoration: none;
+    font-family: var(--font-anzeige);
+    font-weight: 400;
+    font-size: 1.5rem;
+    letter-spacing: .01em;
+}
+.ff-topnav { margin-left: auto; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.ff-topnav-link {
+    color: #cdd6e2;
+    text-decoration: none;
+    font-size: 14px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    line-height: 1;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+.ff-topnav-link:hover { color: #fff; background: rgba(240, 162, 58, .14); }
+.ff-topnav-link.aktiv { color: var(--akzent); background: rgba(240, 162, 58, .16); }
+.ff-topnav-link.ff-abmelden { margin-left: 8px; border: 1px solid rgba(255, 255, 255, .22); }
+
+/* Zweite, schmale App-Steuerleiste (Dashboard-Name links, Werkzeuge rechts) */
+.subtoolbar { height: auto; padding: 0.4rem 0.9rem; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+.subtoolbar-name { color: var(--text-leise); font-size: 0.9rem; font-family: var(--font-anzeige); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.subtoolbar .toolbar-rechts { flex-wrap: wrap; gap: 0.4rem; }
+
+/* Ansicht-Dropdown + Anordnungsbänke */
+.ansicht-wahl { font-size: 0.85rem; }
+/* Anordnungsbänke + Speichern: dünne Umrandung zeigt die Zusammengehörigkeit */
+.baenke { display: inline-flex; align-items: center; gap: 0.25rem; border: 1px solid var(--linie); border-radius: var(--radius-xs); padding: 0.2rem; }
+.bank-btn { min-width: 2rem; padding: 0.35rem 0.5rem; justify-content: center; }
+.bank-btn.belegt { border-color: var(--akzent); color: var(--akzent); }
+.bank-btn.speicherziel { outline: 2px dashed var(--akzent); outline-offset: 1px; }
+#bank-speichern.aktiv { background: var(--akzent); color: var(--akzent-kontrast); border-color: var(--akzent); }
+/* Icon-Knopf (Schloss zum Festsetzen der Ansicht) */
+.tb-icon-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.35rem 0.5rem; }
+.tb-icon-btn svg { display: block; }
+#btn-sperre.aktiv { background: var(--akzent); color: var(--akzent-kontrast); border-color: var(--akzent); }
+
+/* Festgesetzte Ansicht: keine Karten-Knöpfe, kein Verschieben/Größe ändern */
+.board.gesperrt .flaeche-knopf,
+.board.gesperrt .flaeche-resize,
+.board.gesperrt .clips-trenner { display: none; }
+.board.gesperrt .flaeche-titel { cursor: default; }
+/* Festgesetzt → auch der Hinzufügen-Knopf (FAB, folgendes Geschwister) verschwindet */
+.board.gesperrt ~ .fab { display: none; }
+
+/* Clips-Modus: dezentes Raster als Hintergrund (magnetisches „Gartengebilde") */
+.board.clips {
+    background-image:
+        linear-gradient(to right, rgba(255, 255, 255, .03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, .03) 1px, transparent 1px);
+    background-size: 20px 20px, 20px 20px;   /* dezentes Raster (Snapping feiner bei 10px) */
+}
+
+/* Trenn-Griffe im Spalt zwischen zwei benachbarten Clips-Karten.
+   Maus rein → Größenänderungs-Cursor; Ziehen verschiebt die gemeinsame Kante. */
+.clips-trenner { position: absolute; z-index: 9000; touch-action: none; transition: background .12s; }
+.clips-trenner.waagerecht-ziehen { cursor: col-resize; }  /* nebeneinander → ↔ */
+.clips-trenner.senkrecht-ziehen  { cursor: row-resize; }  /* übereinander → ↕ */
+.clips-trenner:hover { background: rgba(234, 107, 23, .45); border-radius: 3px; }
+
+/* Dashboard-Übersicht */
+.uebersicht { flex: 1 1 auto; overflow-y: auto; padding: 1.5rem; max-width: 1100px; width: 100%; margin: 0 auto; }
+.uebersicht-titel { font-family: var(--font-anzeige); color: var(--text); font-size: 1.9rem; margin: 0 0 0.3rem; }
+.uebersicht-info { color: var(--text-leise); margin: 0 0 1.3rem; }
+.uebersicht-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; align-items: start; }
+.dash-karte { background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--radius); padding: 1rem; display: flex; flex-direction: column; gap: 0.7rem; position: relative; }
+.dash-name { font-family: var(--font-anzeige); color: var(--text); font-size: 1.25rem; margin: 0; word-break: break-word; }
+.dash-karte-knoepfe { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+a.w-sekundaer-btn { text-decoration: none; display: inline-flex; align-items: center; }
+.dash-oeffnen { background: var(--akzent); color: var(--akzent-kontrast); border-color: var(--akzent); }
+.dash-oeffnen:hover { background: var(--akzent-2); }
+.dash-marke { position: absolute; top: 0.6rem; right: 0.6rem; font-size: 0.7rem; color: var(--akzent); border: 1px solid var(--linie); border-radius: 999px; padding: 1px 8px; }
+.dash-neu { border-style: dashed; }
+.dash-neu .w-eingabe { width: 100%; }
+.dash-share { display: flex; flex-direction: column; gap: 0.4rem; border-top: 1px solid var(--linie); padding-top: 0.6rem; }
+
+/* Übersicht-Fußzeile: Import + Version/Update */
+.uebersicht-fuss { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--linie); }
+.uebersicht-import, .uebersicht-version { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.uebersicht-version { color: var(--text-leise); font-size: 0.85rem; }
+.uebersicht-meldung { font-size: 0.82rem; color: var(--text-leise); }
+
+.toolbar {
+    height: var(--toolbar-h);
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0 0.9rem;
+    background: var(--flaeche-gradient);
+    border-bottom: 1px solid var(--linie);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+    z-index: 1000;
+}
+
+.toolbar-rechts {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.tb-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--linie);
+    border-radius: var(--radius-klein);
+    background: var(--flaeche);
+    color: var(--text);
+    font-size: 0.88rem;
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.tb-btn:hover:not(:disabled) {
+    background: var(--flaeche-2);
+    border-color: var(--akzent);
+}
+
+.tb-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------
+   App: Board
+   --------------------------------------------------------- */
+
+.board {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;               /* darf NICHT über den Flex-Container hinauswachsen */
+    overflow-y: auto;            /* senkrecht scrollen, wenn Kacheln unten rausragen */
+    overflow-x: hidden;
+    padding-bottom: 5.5rem;      /* Puffer, damit der runde Knopf die unterste Kachel nicht verdeckt */
+    background:
+        radial-gradient(900px 500px at 50% 0%, rgba(var(--akzent-rgb), 0.04), transparent 65%),
+        var(--bg-2);
+}
+
+/* Unsichtbarer Platzhalter, der die Scroll-Höhe des Boards bestimmt (Höhe via JS gesetzt). */
+.board-spacer { position: relative; width: 1px; pointer-events: none; }
+
+.leerhinweis {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    text-align: center;
+    color: var(--text-leise);
+    pointer-events: none;
+}
+
+/* Wichtig: sonst überstimmt display:grid das hidden-Attribut und der
+   Leer-Hinweis bliebe sichtbar, sobald Flächen vorhanden sind. */
+.leerhinweis[hidden] { display: none; }
+
+.leerhinweis-gross { font-family: var(--font-anzeige); font-size: 1.4rem; margin: 0 0 0.4rem; color: var(--text); }
+.leerhinweis-klein { font-size: 0.85rem; margin: 0; opacity: 0.75; }
+
+/* ---------------------------------------------------------
+   App: Flächen (Fenster)
+   --------------------------------------------------------- */
+
+.flaeche {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    min-width: 120px;
+    min-height: 60px;
+    background: var(--flaeche);
+    border: 1px solid var(--linie);
+    border-radius: var(--radius);
+    box-shadow: var(--schatten);
+    overflow: hidden;
+}
+
+.flaeche.aktiv {
+    border-color: var(--akzent);
+}
+
+.flaeche-titel {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    height: 34px;
+    padding: 0 0.25rem 0 0.7rem;
+    background: var(--flaeche-gradient);
+    border-bottom: 1px solid var(--linie);
+    cursor: move;
+    user-select: none;
+    touch-action: none;
+}
+
+.flaeche-titel-text {
+    flex: 1 1 auto;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.flaeche-titel-eingabe {
+    flex: 1 1 auto;
+    min-width: 0;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.15rem 0.35rem;
+    border: 1px solid var(--akzent);
+    border-radius: var(--radius-xs);
+    background: var(--bg-2);
+    color: var(--text);
+}
+
+.flaeche-titel-eingabe:focus {
+    outline: 2px solid var(--akzent-2);
+    outline-offset: 1px;
+}
+
+.flaeche-knopf {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: var(--text-leise);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.flaeche-knopf:hover { background: var(--flaeche); color: var(--text); }
+
+.flaeche-inhalt {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0.7rem;
+    color: var(--text-leise);
+    font-size: 0.85rem;
+    overflow: auto;
+}
+
+.flaeche-resize {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    touch-action: none;
+}
+
+.flaeche-resize::after {
+    content: "";
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid var(--linie);
+    border-bottom: 2px solid var(--linie);
+}
+
+.flaeche.eingeklappt {
+    height: auto !important;
+    min-height: 0;
+}
+
+.flaeche.eingeklappt .flaeche-inhalt,
+.flaeche.eingeklappt .flaeche-resize {
+    display: none;
+}
+
+/* Während Ziehen/Größe: keine Textauswahl, ruhiger Cursor */
+body.zieht { user-select: none; cursor: grabbing; }
+
+/* ---------------------------------------------------------
+   Widgets (Flächen-Inhalte): Notiz · Checkliste · Links
+   --------------------------------------------------------- */
+
+/* Notiz */
+.w-notiz {
+    flex: 1 1 auto;
+    min-height: 70px;
+    resize: none;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+.w-notiz:focus { outline: none; }   /* kein Innenrahmen — der Text-Cursor zeigt den Fokus */
+
+/* Gemeinsame Zeilen-Knöpfe (entfernen / bearbeiten / ok) */
+.w-zeile-weg,
+.w-zeile-edit,
+.w-zeile-ok {
+    flex: 0 0 auto;
+    border: 0;
+    background: transparent;
+    color: var(--text-leise);
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    font-size: 0.95rem;
+    padding: 0.2rem 0.4rem;
+}
+.w-zeile-weg:hover,
+.w-zeile-edit:hover { color: var(--text); background: var(--flaeche-2); }
+.w-zeile-ok { color: var(--akzent); font-weight: 600; }
+
+/* „+ …"-Knopf am Listenende */
+.w-add {
+    margin-top: 0.5rem;
+    border: 1px dashed var(--linie);
+    background: transparent;
+    color: var(--text-leise);
+    border-radius: var(--radius-klein);
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+.w-add:hover { color: var(--text); border-color: var(--akzent); }
+
+/* Checkliste */
+.w-check-liste { display: flex; flex-direction: column; gap: 0.3rem; }
+.w-check-zeile { display: flex; align-items: center; gap: 0.4rem; }
+.w-check-box { flex: 0 0 auto; width: 16px; height: 16px; accent-color: var(--akzent); }
+.w-check-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.88rem;
+    padding: 0.15rem 0.1rem;
+}
+.w-check-text:focus { border-bottom-color: var(--akzent); }
+.w-check-text.erledigt { text-decoration: line-through; color: var(--text-leise); }
+
+/* Links */
+.w-link-liste { display: flex; flex-direction: column; gap: 0.3rem; }
+.w-link-zeile { display: flex; align-items: center; gap: 0.4rem; }
+.w-link-a {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--akzent);
+    text-decoration: none;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.w-link-a:hover { text-decoration: underline; }
+.w-link-a.ungueltig { color: var(--text-leise); cursor: default; }
+.w-link-zeile.bearbeiten { flex-wrap: wrap; }
+.w-link-titel,
+.w-link-url {
+    flex: 1 1 120px;
+    min-width: 0;
+    border: 1px solid var(--linie);
+    border-radius: var(--radius-xs);
+    background: var(--bg-2);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.25rem 0.4rem;
+}
+.w-link-titel:focus,
+.w-link-url:focus { border-color: var(--akzent); }
+
+.w-link-warn { flex: 0 0 auto; color: var(--fehler); font-size: 0.9rem; }
+
+/* Tabelle */
+.w-tab-wrap { overflow: auto; }
+.w-tab { border-collapse: collapse; width: 100%; }
+.w-tab th, .w-tab td { border: 1px solid var(--linie); padding: 0; }
+.w-tab th { background: var(--flaeche-2); }
+.w-tab-eck { width: 1%; }
+.w-tab-kopf, .w-tab-zelle {
+    width: 100%;
+    min-width: 70px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.4rem;
+}
+.w-tab-kopf { font-weight: 600; }
+.w-tab-weg {
+    border: 0;
+    background: transparent;
+    color: var(--text-leise);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.1rem 0.35rem;
+}
+.w-tab-weg:hover { color: var(--fehler); }
+.w-tab-leiste { display: flex; gap: 0.4rem; margin-top: 0.5rem; }
+.w-tab-leiste .w-add { margin-top: 0; }
+
+/* Telefonbuch */
+.w-tel-liste { display: flex; flex-direction: column; gap: 0.5rem; }
+.w-tel-karte {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid var(--linie);
+    border-radius: var(--radius-klein);
+    background: var(--bg-2);
+}
+.w-tel-feld {
+    flex: 1 1 7rem;          /* fließen nebeneinander, brechen erst um wenn kein Platz */
+    min-width: 4.5rem;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.2rem 0.1rem;
+}
+.w-tel-feld:focus { border-bottom-color: var(--akzent); }
+.w-tel-name { font-weight: 600; flex-basis: 8rem; }
+.w-tel-notiz { flex-basis: 10rem; }
+.w-tel-karte .w-zeile-weg { flex: 0 0 auto; align-self: center; order: 99; }
+
+/* ---------------------------------------------------------
+   Gemeinsame Bausteine für Service-Widgets (Wetter/Kalender/RSS/Mail)
+   --------------------------------------------------------- */
+.w-eingabe-zeile { display: flex; gap: 0.4rem; }
+.w-eingabe {
+    border: 1px solid var(--linie);
+    border-radius: var(--radius-xs);
+    background: var(--bg-2);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.5rem;
+}
+.w-eingabe:focus { border-color: var(--akzent); }
+.w-sekundaer-btn {
+    flex: 0 0 auto;
+    border: 1px solid var(--linie);
+    border-radius: var(--radius-xs);
+    background: var(--flaeche-2);
+    color: var(--text);
+    font-size: 0.85rem;
+    padding: 0.3rem 0.7rem;
+    cursor: pointer;
+}
+.w-sekundaer-btn:hover { border-color: var(--akzent); }
+.w-status { color: var(--text-leise); font-size: 0.85rem; margin: 0; }
+
+/* Uhr */
+.w-uhr {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    text-align: center;
+}
+.w-uhr-zeit {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+}
+.w-uhr-datum { font-size: 0.9rem; color: var(--text-leise); }
+
+/* Wetter (Eingabe/Status/Laden via .w-eingabe/.w-status/.w-sekundaer-btn) */
+.w-wetter { display: flex; flex-direction: column; gap: 0.6rem; flex: 1 1 auto; }
+.w-wetter-ort { flex: 1 1 auto; min-width: 0; }
+.w-wetter-anzeige { flex: 1 1 auto; display: flex; flex-direction: column; gap: 0.25rem; justify-content: center; }
+.w-wetter-kopf { display: flex; align-items: center; gap: 0.6rem; }
+.w-wetter-icon { width: 3rem; height: 3rem; flex: 0 0 auto; display: inline-flex; }
+.w-wetter-temp { font-size: 2rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.w-wetter-besch { color: var(--text); font-size: 0.95rem; }
+.w-wetter-besch::first-letter { text-transform: uppercase; }
+.w-wetter-detail { color: var(--text-leise); font-size: 0.82rem; }
+.w-wetter-vorschau {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--linie);
+}
+.w-wetter-vtag {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    text-align: center;
+}
+.w-wetter-vname { color: var(--text-leise); font-size: 0.76rem; }
+.w-wetter-vicon { width: 1.9rem; height: 1.9rem; display: inline-flex; }
+.w-wetter-vtemp { color: var(--text); font-size: 0.78rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Kalender (zentrale Adressen, Status via gemeinsame Bausteine) */
+.w-kal { display: flex; flex-direction: column; gap: 0.5rem; flex: 1 1 auto; min-height: 0; }
+.w-kal-wahl { flex: 1 1 auto; min-width: 0; }
+.w-kal-liste { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 0.4rem; }
+.w-kal-eintrag {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 0.6rem;
+    align-items: baseline;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--linie);
+}
+.w-kal-eintrag:last-child { border-bottom: 0; }
+.w-kal-wann { color: var(--akzent); font-size: 0.82rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.w-kal-titel { color: var(--text); font-size: 0.88rem; }
+.w-kal-ort { grid-column: 2; color: var(--text-leise); font-size: 0.78rem; }
+
+/* RSS */
+.w-rss { display: flex; flex-direction: column; gap: 0.5rem; flex: 1 1 auto; min-height: 0; }
+.w-rss-url { flex: 1 1 auto; min-width: 0; }
+.w-rss-liste { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 0.4rem; }
+.w-rss-eintrag { display: flex; flex-direction: column; gap: 0.1rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--linie); }
+.w-rss-eintrag:last-child { border-bottom: 0; }
+.w-rss-titel { color: var(--akzent); text-decoration: none; font-size: 0.88rem; }
+.w-rss-titel:hover { text-decoration: underline; }
+.w-rss-datum { color: var(--text-leise); font-size: 0.76rem; font-variant-numeric: tabular-nums; }
+
+/* Chat */
+.w-chat { display: flex; flex-direction: column; gap: 0.5rem; flex: 1 1 auto; min-height: 0; }
+.w-chat-als-label { display: flex; align-items: center; gap: 0.3rem; flex: 1 1 auto; min-width: 0; font-size: 0.8rem; color: var(--text-leise); }
+.w-chat-als { flex: 1 1 auto; min-width: 0; }
+.w-chat-liste { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 0.5rem; }
+/* Nachrichten als Sprechblasen: fremde links, eigene rechts */
+.w-chat-nachricht { display: flex; flex-direction: column; gap: 0.15rem; max-width: 82%; align-self: flex-start; }
+.w-chat-nachricht.eigen { align-self: flex-end; align-items: flex-end; }
+.w-chat-kopf { display: flex; gap: 0.4rem; align-items: baseline; }
+.w-chat-nachricht.eigen .w-chat-kopf { flex-direction: row-reverse; }
+.w-chat-name { font-weight: 600; font-size: 0.82rem; color: var(--akzent); }
+.w-chat-zeit { font-size: 0.72rem; color: var(--text-leise); font-variant-numeric: tabular-nums; }
+.w-chat-text {
+    font-size: 0.88rem; white-space: pre-wrap; word-break: break-word;
+    background: var(--flaeche-2); padding: 0.4rem 0.6rem;
+    border-radius: 12px; border-top-left-radius: 3px;
+}
+.w-chat-nachricht.eigen .w-chat-text {
+    background: var(--akzent); color: var(--akzent-kontrast);
+    border-radius: 12px; border-top-right-radius: 3px;
+}
+.w-chat-eingabe { flex: 0 0 auto; }
+.w-chat-feld { flex: 1 1 auto; min-width: 0; }
+
+/* Mail (nur Lesen) */
+.w-mail { display: flex; flex-direction: column; gap: 0.5rem; flex: 1 1 auto; min-height: 0; }
+.w-mail-konto { flex: 1 1 auto; min-width: 0; }
+
+/* Karte (Leaflet) */
+/* Gemeinsamer Container für die spaltigen Widgets */
+.w-karte, .w-livestream, .w-wirtschaft, .w-custom { display: flex; flex-direction: column; gap: 0.4rem; flex: 1 1 auto; min-height: 0; }
+.w-karte-leiste { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; flex: 0 0 auto; }
+.w-karte-btn { padding: 0.25rem 0.55rem; display: inline-flex; align-items: center; gap: 0.3rem; }
+.w-karte-btn[hidden] { display: none; }   /* sonst überstimmt display:inline-flex das hidden-Attribut */
+.w-karte-btn.aktiv { background: var(--akzent); color: var(--akzent-kontrast); border-color: var(--akzent); }
+.w-karte-ico { display: inline-flex; }
+.w-karte-ico svg { display: block; }
+.w-karte-farbe {
+    width: 2rem; height: 1.9rem; padding: 0; flex: 0 0 auto;
+    border: 1px solid var(--linie); border-radius: var(--radius-xs); background: none; cursor: pointer;
+}
+.w-karte-art,
+.w-karte-status { flex: 0 0 auto; }
+.w-karte-flaeche { flex: 1 1 auto; min-height: 160px; border-radius: var(--radius-xs); overflow: hidden; }
+.w-karte-popup { display: flex; flex-direction: column; gap: 0.4rem; min-width: 9rem; }
+.leaflet-container { font: inherit; }
+
+/* Eigene Marker-Stecknadel (divIcon): kein weißer Leaflet-Kasten */
+.w-karte-pin { background: none; border: 0; }
+.w-karte-pin svg { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
+/* Sichtbares Marker-Label */
+.leaflet-tooltip.w-karte-label {
+    background: #11181f; color: #fff; border: 1px solid #2a3340;
+    border-radius: 6px; padding: 2px 7px; font-size: 12px; font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,.4);
+}
+.leaflet-tooltip.w-karte-label::before { display: none; }
+/* Bearbeitungs-Griffe für Linien-Punkte / Verschieben */
+.w-karte-griff { background: none; border: 0; }
+.w-karte-griff-punkt { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid #11181f; box-shadow: 0 1px 3px rgba(0,0,0,.6); cursor: grab; }
+.w-karte-griff-move { width: 18px; height: 18px; border-radius: 4px; background: var(--akzent); border: 2px solid #11181f; box-shadow: 0 1px 3px rgba(0,0,0,.5); cursor: move; }
+/* Eigener Layer-Umschalter (SVG) statt L.control.layers */
+.w-karte-layerbtn {
+    width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+    background: #fff; color: #11181f; border: 2px solid rgba(0,0,0,.2); border-radius: 4px; cursor: pointer;
+}
+.w-karte-layerbtn:hover { background: #f4f4f4; }
+
+/* Livestream: Bild in voller Breite, Höhe passt sich an */
+.w-ls-leiste { display: flex; gap: 0.3rem; flex: 0 0 auto; }
+.w-ls-url { flex: 1 1 auto; min-width: 0; }
+.w-ls-intervall { flex: 0 0 auto; }
+.w-ls-buehne { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; align-items: flex-start; justify-content: center; }
+.w-ls-bild { width: 100%; height: auto; display: block; border-radius: var(--radius-xs); }
+.w-ls-status { margin: auto; text-align: center; }
+
+/* Wirtschaft: Liniendiagramm + Legende */
+.w-wi-legende { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; flex: 0 0 auto; font-size: 0.8rem; color: var(--text-leise); }
+.w-wi-leg { display: inline-flex; align-items: center; gap: 0.3rem; }
+.w-wi-leg-punkt { width: 10px; height: 10px; border-radius: 2px; flex: 0 0 auto; }
+.w-wi-span { min-width: 2.2rem; text-align: center; font-size: 0.8rem; color: var(--text-leise); font-variant-numeric: tabular-nums; }
+.w-wi-flaeche { position: relative; flex: 1 1 auto; min-height: 80px; }
+.w-wi-svg { position: absolute; inset: 0; }
+.w-wi-grund { stroke: var(--linie); stroke-width: 1; stroke-dasharray: 4 4; }
+.w-wi-x { position: absolute; bottom: 0; font-size: 0.7rem; color: var(--text-leise); }
+.w-wi-x-l { left: 2px; }
+.w-wi-x-r { right: 2px; }
+
+/* Custom-Fläche (Sandbox-iframe + Editor) */
+.w-custom-leiste { display: flex; justify-content: flex-end; flex: 0 0 auto; }
+.w-custom-buehne { position: relative; flex: 1 1 auto; min-height: 80px; display: flex; flex-direction: column; }
+/* helles Renderfeld bewusst (Nutzer-HTML erwartet i. d. R. weißen Hintergrund) */
+.w-custom-frame { flex: 1 1 auto; width: 100%; height: 100%; border: 0; border-radius: var(--radius-xs); background: #fff; }
+.w-custom-editor { flex: 1 1 auto; width: 100%; resize: none; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.82rem; }
+.w-custom-hinweis { flex: 0 0 auto; margin: 0.3rem 0 0; font-size: 0.74rem; color: var(--text-leise); }
+
+/* Kopfleiste für Feed-Widgets (Mail-Posteingang/Nachricht, Kalender) */
+.w-feedkopf { display: flex; align-items: center; gap: 0.4rem; flex: 0 0 auto; }
+.w-feedkopf-titel {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.w-mini {
+    flex: 0 0 auto;
+    border: 1px solid var(--linie);
+    border-radius: var(--radius-xs);
+    background: var(--flaeche-2);
+    color: var(--text-leise);
+    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+}
+.w-mini:hover { color: var(--text); border-color: var(--akzent); }
+.w-feedhinweis-btn { margin-top: 0.5rem; align-self: flex-start; }
+
+/* Liste */
+.w-mail-liste { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.w-mail-eintrag {
+    text-align: left;
+    border: 0;
+    border-bottom: 1px solid var(--linie);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    padding: 0.45rem 0.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+.w-mail-eintrag:hover { background: var(--flaeche-2); }
+.w-mail-z1 { display: flex; gap: 0.5rem; align-items: baseline; }
+.w-mail-von { flex: 1 1 auto; min-width: 0; font-size: 0.85rem; color: var(--text-leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.w-mail-datum { flex: 0 0 auto; font-size: 0.76rem; color: var(--text-leise); font-variant-numeric: tabular-nums; }
+.w-mail-betreff { font-size: 0.86rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.w-mail-eintrag.ungelesen .w-mail-von,
+.w-mail-eintrag.ungelesen .w-mail-betreff { color: var(--text); font-weight: 600; }
+
+/* Nachricht lesen */
+.w-mail-meta { flex: 0 0 auto; color: var(--text-leise); font-size: 0.8rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--linie); }
+.w-mail-text { flex: 1 1 auto; min-height: 0; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 0.85rem; line-height: 1.4; color: var(--text); }
+
+/* Datei-Zwischenlager */
+.w-datei-liste { display: flex; flex-direction: column; gap: 0.3rem; }
+.w-datei-zeile { display: flex; align-items: center; gap: 0.4rem; }
+.w-datei-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--akzent);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.9rem;
+}
+.w-datei-name:hover { text-decoration: underline; }
+.w-datei-groesse { flex: 0 0 auto; color: var(--text-leise); font-size: 0.78rem; }
+.w-datei-status { display: block; margin-top: 0.3rem; color: var(--text-leise); font-size: 0.8rem; }
+
+/* ---------------------------------------------------------
+   Gestapelte Ansicht — Flächen gleich groß im Gitter.
+   JS setzt .gestapelt bei Raster-Knopf ODER auf dem Handy.
+   --------------------------------------------------------- */
+
+.board.gestapelt {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-auto-rows: 220px;
+    gap: 14px;
+    padding: 14px;
+    padding-bottom: 5.5rem;   /* Platz, damit der runde Knopf unten nichts verdeckt */
+    overflow: auto;
+    align-content: start;
+}
+
+/* Flächen verlieren im Gitter ihre freie Position/Größe.
+   !important ist nötig, weil der Fenster-Manager Position/Größe
+   als Inline-Style (element.style) setzt — siehe rendere() in pult.js. */
+.board.gestapelt .flaeche {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    box-shadow: none;
+}
+
+.board.gestapelt .flaeche.eingeklappt { align-self: start; }
+.board.gestapelt .flaeche-resize { display: none; }
+.board.gestapelt .flaeche-titel { cursor: default; }
+
+/* ---------------------------------------------------------
+   Handy: Werkzeugleiste kompakter
+   --------------------------------------------------------- */
+
+@media (max-width: 640px) {
+    .tb-btn { padding: 0.4rem 0.6rem; font-size: 0.82rem; }
+}
+
+/* Handy: gestapelte Ansicht einspaltig (JS setzt .gestapelt dort immer,
+   auch im freien Modus) — nur die Spalten/Abstände werden angepasst. */
+@media (max-width: 700px) {
+    .board.gestapelt {
+        grid-template-columns: 1fr;
+        grid-auto-rows: minmax(160px, auto);
+        gap: 12px;
+        padding: 12px;
+        padding-bottom: 5.5rem;   /* Platz für den runden Knopf, auch auf dem Handy */
+    }
+    /* 16px verhindert das automatische Hineinzoomen von iOS bei Fokus */
+    .w-notiz,
+    .w-check-text,
+    .w-link-titel,
+    .w-link-url,
+    .w-tab-kopf,
+    .w-tab-zelle,
+    .w-tel-feld,
+    .w-eingabe,
+    .flaeche-titel-eingabe {
+        /* mind. 16px gegen iOS-Zoom, aber größere Nutzer-Schriftgröße respektieren */
+        font-size: max(16px, 1rem);
+    }
+}

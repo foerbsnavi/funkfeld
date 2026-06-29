@@ -1,0 +1,17 @@
+{
+    "version": "1.0.0",
+    "date": "2026-06-29",
+    "changelog": [
+        {
+            "version": "1.0.0",
+            "date": "2026-06-29",
+            "changes": [
+                "Erste Funkfeld-Version: zentrales Management-Dashboard mit frei verschiebbaren Flächen.",
+                "Flächen: Notiz, Checkliste, Links, Tabelle, Telefonbuch, Dateien, Uhr, Wetter, Kalender, Mail, RSS, Chat und die neue gemeinsame Live-Karte.",
+                "Mehrere Kalender möglich (Auswahl je Fläche, Name wird angezeigt).",
+                "Wetter mit aktueller Lage und 3-Tage-Vorschau.",
+                "Karte: Markierungen und Striche setzen, die live an alle Betrachter übertragen werden."
+            ]
+        }
+    ]
+}

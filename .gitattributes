@@ -1,0 +1,13 @@
+# Einheitliche Zeilenenden (LF) im Repo — verhindert CRLF-Rauschen plattformübergreifend
+* text=auto eol=lf
+
+# Binärdateien nicht anfassen
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.ttf  binary
+*.woff  binary
+*.woff2 binary
+*.zip  binary

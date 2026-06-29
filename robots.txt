@@ -1,0 +1,3 @@
+# Funkfeld ist eine private, login-geschützte Anwendung — nichts soll indexiert werden.
+User-agent: *
+Disallow: /
