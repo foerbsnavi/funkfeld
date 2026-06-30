@@ -144,7 +144,7 @@ body {
     bottom: 1rem;
     z-index: 1500;
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
     align-items: flex-end;
     gap: 0.5rem;
 }
