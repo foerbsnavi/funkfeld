@@ -4,6 +4,23 @@ Alle nennenswerten Änderungen an Funkfeld werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/),
 Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.3.0] – 2026-07-02
+
+### Neu
+- **Freigabe-Berechtigungen:** Für geteilte Dashboards lässt sich jetzt festlegen, was beigetretene Mitglieder dürfen — als Auswahl im Teilen-Abschnitt (sowohl in den Board-Einstellungen als auch in der Dashboard-Übersicht):
+  - **Nur ansehen** – reiner Lesezugriff, kein Bearbeiten.
+  - **Mitarbeiten (Flächen & Inhalte)** – Karten anlegen/ändern, Layout, Chat, Dateien (Standard).
+  - **Alles (auch Einstellungen)** – zusätzlich die zentralen Einstellungen/Zugänge.
+- „Nur ansehen“ schaltet das Board vollständig schreibgeschützt — konsistent für Maus, Tastatur und Screenreader (fokussierbare Bedienelemente werden aus der Tab-Reihenfolge genommen, Inhalte bleiben lesbar), mit Vorlese-Hinweis „Nur Lesezugriff“.
+
+### Sicherheit
+- Die Rechte werden **serverseitig** bei jedem Schreibzugriff erzwungen (nicht nur in der Oberfläche): unter „Mitarbeiten“ liegende Mitglieder können weder speichern noch die Einstellungen ändern.
+- Zugangsdaten des Eigentümers (Mail-Server/Benutzer, Kalender-Adressen) werden Mitgliedern unter „Alles“ nicht mehr ausgeliefert.
+- Der **Mail-Posteingang** eines geteilten Dashboards ist nur noch für den Eigentümer lesbar (vorher konnten beigetretene Mitglieder ihn über die API abrufen).
+
+### Geändert
+- Die Dashboard-Liste des Eigentümers wird pro Anfrage nur noch einmal gelesen (Request-Cache) — weniger Datei-Zugriffe bei aktiver Zusammenarbeit.
+
 ## [1.2.1] – 2026-07-02
 
 ### Sicherheit

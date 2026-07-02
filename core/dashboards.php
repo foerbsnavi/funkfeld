@@ -42,11 +42,29 @@ function pult_dash_basis_von(string $eigner): ?string
 function pult_dash_index_pfad(string $basis): string { return $basis . '/dashboards.json'; }
 function pult_dash_dir(string $basis, string $id): string { return $basis . '/d/' . $id; }
 
+/**
+ * Request-Cache für die Dashboard-Listen (je Basis-Pfad). Analog zu pult_config():
+ * dashboards.json wird innerhalb einer Anfrage an mehreren Stellen gelesen
+ * (bootstrap → pult_dash_zugriff, pult_verlangt → pult_dash_recht, einstellung_get …).
+ * Geschrieben wird ausschließlich über pult_dash_speichern(), das den Cache aktualisiert.
+ */
+function &pult_dash_liste_cache(): array
+{
+    static $cache = [];
+    return $cache;
+}
+
 /** Liste der EIGENEN Dashboards (mit Einmal-Migration eines alten Einzel-Dashboards). */
 function pult_dash_liste(string $basis): array
 {
+    $cache = &pult_dash_liste_cache();
+    if (array_key_exists($basis, $cache)) {
+        return $cache[$basis];
+    }
+
     $idx = store_read(pult_dash_index_pfad($basis), null);
     if (is_array($idx) && isset($idx['items']) && is_array($idx['items'])) {
+        $cache[$basis] = $idx['items'];
         return $idx['items'];
     }
 
@@ -83,12 +101,19 @@ function pult_dash_liste(string $basis): array
         }
     }
     store_write(pult_dash_index_pfad($basis), ['items' => $items]);
+    $cache[$basis] = $items;
     return $items;
 }
 
 function pult_dash_speichern(string $basis, array $items): bool
 {
-    return store_write(pult_dash_index_pfad($basis), ['items' => array_values($items)]);
+    $items = array_values($items);
+    $ok = store_write(pult_dash_index_pfad($basis), ['items' => $items]);
+    if ($ok) {
+        $cache = &pult_dash_liste_cache();
+        $cache[$basis] = $items;   // Request-Cache aktuell halten (siehe pult_dash_liste)
+    }
+    return $ok;
 }
 
 /** Beigetretene (geteilte) Dashboards des aktuellen Kontos (nur Plattform). */
@@ -161,6 +186,54 @@ function pult_dash_aktuelle(): ?array
         unset($_SESSION['ff_dash']);
     }
     return null;
+}
+
+/* --- Freigabe-Berechtigungen für geteilte Dashboards ---
+   Ein Dashboard trägt (im Index des Eigentümers) ein share_recht, das für ALLE
+   Beigetretenen gilt: 'ansehen' (nur lesen), 'mitarbeiten' (Inhalte/Layout/Chat)
+   oder 'voll' (auch Einstellungen/Zugänge). Der Eigentümer selbst hat immer 'voll'. */
+
+/** Rechte-Stufe als Zahl (für Vergleiche): kein=0, ansehen=1, mitarbeiten=2, voll=3. */
+function pult_recht_stufe(string $recht): int
+{
+    switch ($recht) {
+        case 'voll':        return 3;
+        case 'mitarbeiten': return 2;
+        case 'ansehen':     return 1;
+        default:            return 0;
+    }
+}
+
+/** Recht auf einen der drei gültigen Werte normalisieren (Standard 'mitarbeiten'). */
+function pult_recht_normal(string $recht): string
+{
+    return in_array($recht, ['ansehen', 'mitarbeiten', 'voll'], true) ? $recht : 'mitarbeiten';
+}
+
+/**
+ * Recht des aktuellen Nutzers für das aktuell gewählte Dashboard:
+ *  - eigenes Dashboard → 'voll'
+ *  - beigetretenes Dashboard → dessen share_recht (Standard 'mitarbeiten')
+ *  - kein Dashboard/kein Zugriff → 'kein'
+ */
+function pult_dash_recht(): string
+{
+    if (!defined('PULT_DASH_OWNER') || !defined('PULT_DASH_ID')) {
+        return 'kein';
+    }
+    if (PULT_DASH_OWNER === pult_dash_eigner()) {
+        return 'voll';   // Eigentümer
+    }
+    $basis = pult_dash_basis_von(PULT_DASH_OWNER);
+    if ($basis === null) {
+        return 'kein';
+    }
+    foreach (pult_dash_liste($basis) as $it) {
+        if (($it['id'] ?? '') === PULT_DASH_ID) {
+            return pult_recht_normal((string) ($it['share_recht'] ?? 'mitarbeiten'));
+        }
+    }
+    return 'kein';
 }
 
 /** Anzeigename eines Dashboards (für Topbar/Übersicht). */

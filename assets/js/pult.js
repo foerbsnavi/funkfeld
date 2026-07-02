@@ -43,6 +43,12 @@
     let zeigerUnten = false;
     let syncTimer = null;
     let syncTakt = 0;
+    // Freigabe-Recht des aktuellen Nutzers ('voll' | 'mitarbeiten' | 'ansehen').
+    // 'ansehen' = reiner Lesezugriff (kein Speichern, kein Bearbeiten). Der Server erzwingt es zusätzlich.
+    let recht = 'voll';
+    function nurAnsehen() { return recht === 'ansehen'; }
+    let ansehenObserver = null;   // hält nachgeladene Widget-Inhalte im Nur-Ansehen-Modus tastatur-sicher
+    let ansehenAngesagt = false;  // „Nur Lesezugriff" nur einmal ansagen
 
     /* ---------------------------------------------------------
        Zentraler Sync-Poll als Verteiler: Widgets (Chat, Karte)
@@ -113,6 +119,7 @@
 
     /** Speichern leicht verzögert bündeln (Auto-Save). */
     function planeSpeichern() {
+        if (nurAnsehen()) return;   // reiner Lesezugriff: nichts speichern
         clearTimeout(speicherTimer);
         speicherTimer = setTimeout(speichern, 500);
     }
@@ -131,6 +138,7 @@
 
     /** Inhalt einer Fläche verzögert speichern (Auto-Save pro Fläche). */
     function planeBlockSpeichern(id, typ) {
+        if (nurAnsehen()) return;   // reiner Lesezugriff: nichts speichern
         clearTimeout(blockTimers[id]);
         blockTimers[id] = setTimeout(() => speichereBlock(id, typ), 500);
     }
@@ -475,10 +483,62 @@
         }
     }
     function sperreUmschalten() {
+        if (nurAnsehen()) return;   // im Nur-Ansehen-Modus nicht entsperrbar
         layout.gesperrt = !layout.gesperrt;
         sperreAnwenden();
         trennerAktualisieren();
         planeSpeichern();
+    }
+
+    // Bedien-Elemente in Karten-Inhalten (für die Tastatur-Sperre im Nur-Ansehen-Modus).
+    const FOKUSSIERBAR = 'a[href], button, input, select, textarea, iframe, [contenteditable="true"], [contenteditable=""], [tabindex]';
+
+    /**
+     * Ein Element (und seine Nachfahren) aus der Tastatur-Reihenfolge nehmen. Der Inhalt
+     * bleibt für Screenreader lesbar (Virtual Cursor ignoriert tabindex), nur fokus-/
+     * bedienbar ist er nicht mehr. Ergänzt das reine `pointer-events:none` (nur Maus).
+     */
+    function fokusEntziehen(el) {
+        // Nur setzen, wenn nötig — sonst löst setAttribute im Attribut-Observer eine Endlosschleife aus.
+        const raus = (k) => { if (k.getAttribute('tabindex') !== '-1') k.setAttribute('tabindex', '-1'); };
+        if (el.matches && el.matches(FOKUSSIERBAR)) raus(el);
+        if (el.querySelectorAll) el.querySelectorAll(FOKUSSIERBAR).forEach(raus);
+    }
+    function fokusSperreAlle() {
+        board.querySelectorAll('.flaeche-inhalt').forEach((inh) => fokusEntziehen(inh));
+    }
+
+    /** Nur-Ansehen (Freigabe-Recht 'ansehen'): Board schreibgeschützt, Werkzeuge weg. */
+    function ansehenAnwenden() {
+        const an = nurAnsehen();
+        board.classList.toggle('nur-ansehen', an);   // CSS blendet FAB aus + macht Inhalte nicht-interaktiv (Maus)
+        if (btnSperre) btnSperre.hidden = an;          // kein Entsperren möglich
+        if (an) {
+            fokusSperreAlle();                          // vorhandene Bedien-Elemente aus der Tab-Reihenfolge nehmen
+            if (!ansehenObserver) {
+                // Nachgeladene Inhalte (Mail-Liste, Chat, Feeds …) ebenfalls tastatur-sicher machen.
+                ansehenObserver = new MutationObserver((mutationen) => {
+                    mutationen.forEach((m) => {
+                        // Nachträglich fokussierbar gemachtes Element (tabindex/contenteditable gesetzt)
+                        if (m.type === 'attributes') {
+                            const z = m.target;
+                            if (z.closest && z.closest('.flaeche-inhalt')) fokusEntziehen(z);
+                            return;
+                        }
+                        m.addedNodes.forEach((n) => {
+                            if (n.nodeType !== 1) return;
+                            if (n.closest && n.closest('.flaeche-inhalt')) fokusEntziehen(n);
+                            else if (n.querySelectorAll) n.querySelectorAll('.flaeche-inhalt').forEach((inh) => fokusEntziehen(inh));
+                        });
+                    });
+                });
+                ansehenObserver.observe(board, { childList: true, subtree: true, attributes: true, attributeFilter: ['tabindex', 'contenteditable'] });
+            }
+            if (!ansehenAngesagt) { ansage('Nur Lesezugriff – keine Änderungen möglich.'); ansehenAngesagt = true; }
+        } else if (ansehenObserver) {
+            ansehenObserver.disconnect();
+            ansehenObserver = null;
+        }
     }
 
     /** Auf dem Handy ist die Auswahl ohne Wirkung (immer einspaltig) → ausgrauen. */
@@ -931,6 +991,10 @@
         while (layout.baenke.length < 3) layout.baenke.push(null);
         layout.gesperrt = !!data.layout.gesperrt;
 
+        // Freigabe-Recht übernehmen; 'ansehen' erzwingt den gesperrten Zustand.
+        if (typeof data.recht === 'string') recht = data.recht;
+        if (nurAnsehen()) layout.gesperrt = true;
+
         // naechsteZ über die höchste vorhandene Z-Ebene heben
         const maxZ = layout.flaechen.reduce((m, f) => Math.max(m, f.z || 0), 0);
         if (layout.naechsteZ <= maxZ) layout.naechsteZ = maxZ + 1;
@@ -940,6 +1004,7 @@
         layout.flaechen.forEach(rendere);
         hinweisPruefen();
         ansichtAnwenden();
+        ansehenAnwenden();
         bankStatus();
     }
 

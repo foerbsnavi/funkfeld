@@ -44,6 +44,7 @@
 
     async function oeffnen() {
         const e = await einstellungLaden();
+        const darfAendern = (e.recht || 'voll') === 'voll';   // in geteilten Dashboards nur bei Voll-Recht
         const konten = Array.isArray(e.mailkonten) ? e.mailkonten : [];
 
         // Freigabe-Status (nur Plattform-Modus liefert verfuegbar:true)
@@ -56,12 +57,12 @@
         // Freigabe-Bereich (Dashboard teilen) — baut sich nach jeder Aktion neu auf.
         const freigabeWrap = document.createElement('div');
         freigabeWrap.className = 'pe-freigabe';
-        async function fgPost(aktion) {
+        async function fgPost(aktion, extra) {
             try {
                 const r = await fetch('api.php?action=' + aktion, {
                     method: 'POST', credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ csrf: csrf() })
+                    body: JSON.stringify(Object.assign({ csrf: csrf() }, extra || {}))
                 });
                 return await r.json();
             } catch (e2) { return { ok: false }; }
@@ -118,7 +119,24 @@
                 const reihe = document.createElement('div');
                 reihe.className = 'pe-freigabe-knoepfe';
                 reihe.append(neu, weg);
-                freigabeWrap.append(feld, reihe);
+                // Was dürfen beigetretene Mitglieder?
+                const rechtLabel = document.createElement('label');
+                rechtLabel.className = 'pe-label';
+                rechtLabel.textContent = 'Was Teilnehmer dürfen';
+                const rechtSel = document.createElement('select');
+                rechtSel.className = 'pe-feld w-eingabe';
+                [['ansehen', 'Nur ansehen'], ['mitarbeiten', 'Mitarbeiten (Flächen & Inhalte)'], ['voll', 'Alles (auch Einstellungen)']].forEach((o) => {
+                    const opt = document.createElement('option');
+                    opt.value = o[0]; opt.textContent = o[1];
+                    if ((d.recht || 'mitarbeiten') === o[0]) opt.selected = true;
+                    rechtSel.appendChild(opt);
+                });
+                rechtSel.addEventListener('change', async () => {
+                    const r = await fgPost('freigabe_recht', { recht: rechtSel.value });
+                    if (window.pultAnsage) window.pultAnsage((r && r.ok) ? 'Berechtigung gespeichert.' : 'Speichern fehlgeschlagen.');
+                });
+                rechtLabel.appendChild(rechtSel);
+                freigabeWrap.append(feld, reihe, rechtLabel);
             } else {
                 const erstellen = document.createElement('button');
                 erstellen.type = 'button';
@@ -338,13 +356,24 @@
         speichern.type = 'button';
         speichern.className = 'pult-modal-btn pult-modal-btn-haupt';
         speichern.textContent = 'Speichern';
-        knoepfe.append(abbrechen, speichern);
+        knoepfe.append(abbrechen);
+        if (darfAendern) knoepfe.append(speichern);
 
-        box.append(titel,
-            gruppe('Wetter'), owm.label,
-            gruppe('Kalender'), kalWrap, addKalBtn,
-            gruppe('Mail'), kontenWrap, addBtn,
-            gruppe('Chat-Namen'), namenWrap, addNameBtn);
+        box.append(titel);
+        if (darfAendern) {
+            box.append(
+                gruppe('Wetter'), owm.label,
+                gruppe('Kalender'), kalWrap, addKalBtn,
+                gruppe('Mail'), kontenWrap, addBtn,
+                gruppe('Chat-Namen'), namenWrap, addNameBtn);
+        } else {
+            // Beigetretenes Dashboard ohne Voll-Recht: Zugänge/Konten verwaltet der Eigentümer.
+            const hinweis = document.createElement('p');
+            hinweis.className = 'pe-hinweis';
+            hinweis.textContent = 'Die Zugänge und Konten dieses geteilten Dashboards verwaltet der Eigentümer. '
+                + 'Du kannst mitarbeiten, aber die Einstellungen nicht ändern.';
+            box.append(hinweis);
+        }
         if (fg && fg.verfuegbar) {
             box.append(gruppe('Dashboard teilen'), freigabeWrap);
         }
@@ -354,7 +383,7 @@
 
         const hintergrund = Array.from(document.body.children).filter((x) => x !== overlay);
         hintergrund.forEach((x) => x.setAttribute('inert', ''));
-        owm.input.focus();
+        (darfAendern ? owm.input : abbrechen).focus();
 
         function schliessen() {
             document.removeEventListener('keydown', taste, true);

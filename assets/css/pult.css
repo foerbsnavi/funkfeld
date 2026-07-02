@@ -412,8 +412,13 @@ body {
 .board.gesperrt .flaeche-resize,
 .board.gesperrt .clips-trenner { display: none; }
 .board.gesperrt .flaeche-titel { cursor: default; }
-/* Festgesetzt → auch der Hinzufügen-Knopf (FAB, folgendes Geschwister) verschwindet */
-.board.gesperrt ~ .fab { display: none; }
+/* Festgesetzt oder Nur-Ansehen → der Hinzufügen-Knopf (FAB, folgendes Geschwister) verschwindet */
+.board.gesperrt ~ .fab,
+.board.nur-ansehen ~ .fab { display: none; }
+
+/* Nur-Ansehen (Freigabe-Recht 'ansehen'): reiner Lesezugriff. Zusätzlich zum
+   gesperrten Zustand werden die Flächen-Inhalte nicht-interaktiv (kein Eintippen). */
+.board.nur-ansehen .flaeche-inhalt { pointer-events: none; }
 
 /* Clips-Modus: dezentes Raster als Hintergrund (magnetisches „Gartengebilde") */
 .board.clips {

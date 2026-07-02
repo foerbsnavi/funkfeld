@@ -24,6 +24,14 @@ function pult_json_fehler(string $msg, int $code = 400): void
     exit;
 }
 
+/** Bricht mit 403 ab, wenn das Recht im aktuellen (ggf. geteilten) Dashboard nicht ausreicht. */
+function pult_verlangt(string $minRecht): void
+{
+    if (pult_recht_stufe(pult_dash_recht()) < pult_recht_stufe($minRecht)) {
+        pult_json_fehler('Dafür fehlt die Berechtigung in diesem geteilten Dashboard.', 403);
+    }
+}
+
 /** Liest den JSON-Body größenbegrenzt (max 512 KB) und gibt ihn als Array zurück (oder null). */
 function pult_body(): ?array
 {
@@ -335,7 +343,8 @@ switch ($action) {
                 $bloecke[$id] = pult_clean_block($typ, $b);
             }
         }
-        pult_json_ok(['layout' => $dash, 'bloecke' => $bloecke]);
+        // recht: steuert im Client den Bearbeiten-/Nur-Ansehen-Zustand (Server erzwingt es zusätzlich)
+        pult_json_ok(['layout' => $dash, 'bloecke' => $bloecke, 'recht' => pult_dash_recht()]);
         break;
 
     // Layout speichern (POST, JSON-Body mit csrf + layout)
@@ -348,6 +357,7 @@ switch ($action) {
         if ($body === null || !csrf_valid($body['csrf'] ?? null)) {
             pult_json_fehler('CSRF', 403);
         }
+        pult_verlangt('mitarbeiten');
         $layout = pult_clean_layout($body['layout'] ?? null);
         if ($layout === null) {
             pult_json_fehler('ungültiges Layout');
@@ -368,6 +378,7 @@ switch ($action) {
         if ($body === null || !csrf_valid($body['csrf'] ?? null)) {
             pult_json_fehler('CSRF', 403);
         }
+        pult_verlangt('mitarbeiten');
         $id  = $body['id'] ?? '';
         $typ = (string) ($body['typ'] ?? '');
         if (!pult_block_id_ok($id)) {
@@ -393,6 +404,7 @@ switch ($action) {
         if ($body === null || !csrf_valid($body['csrf'] ?? null)) {
             pult_json_fehler('CSRF', 403);
         }
+        pult_verlangt('mitarbeiten');
         $id = $body['id'] ?? '';
         if (!pult_block_id_ok($id)) {
             pult_json_fehler('ungültige ID');
@@ -681,6 +693,7 @@ switch ($action) {
         if (!csrf_valid($_POST['csrf'] ?? null)) {
             pult_json_fehler('CSRF', 403);
         }
+        pult_verlangt('mitarbeiten');
         if (!isset($_FILES['datei']) || ($_FILES['datei']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
             pult_json_fehler('Upload fehlgeschlagen');
         }
@@ -742,6 +755,7 @@ switch ($action) {
         if ($body === null || !csrf_valid($body['csrf'] ?? null)) {
             pult_json_fehler('CSRF', 403);
         }
+        pult_verlangt('mitarbeiten');
         $fid = $body['file'] ?? '';
         if (!pult_block_id_ok($fid)) {
             pult_json_fehler('ungültige ID');
@@ -750,33 +764,44 @@ switch ($action) {
         pult_json_ok();
         break;
 
-    // Einstellungen lesen — NIE Geheimnisse (Schlüssel/Passwort) zurückgeben, nur „gesetzt?"
+    // Einstellungen lesen — NIE Geheimnisse (Schlüssel/Passwort) zurückgeben, nur „gesetzt?".
+    // Zugangsdaten (Kalender-Adresse, Mail-Server/Benutzer) nur bei Voll-Recht: in einem
+    // geteilten Dashboard sollen „ansehen"/„mitarbeiten"-Mitglieder die Zugänge des
+    // Eigentümers nicht auslesen. Für die Widget-Auswahl reichen id + name.
     case 'einstellung_get':
         require_login_api();
         $e = pult_config()['einstellungen'] ?? [];
-        $konten = array_map(function ($k) {
-            return [
-                'id'          => (string) ($k['id'] ?? ''),
-                'name'        => (string) ($k['name'] ?? ''),
-                'host'        => (string) ($k['host'] ?? ''),
-                'port'        => (int) ($k['port'] ?? 993),
-                'user'        => (string) ($k['user'] ?? ''),
-                'pw_gesetzt'  => ((string) ($k['pw_enc'] ?? '')) !== '',
-                // SMTP-Versand (keine Geheimnisse — Passwort ist dasselbe wie IMAP)
-                'smtp_host'   => (string) ($k['smtp_host'] ?? ''),
-                'smtp_port'   => (int) ($k['smtp_port'] ?? 465),
-                'smtp_secure' => (string) ($k['smtp_secure'] ?? 'ssl'),
-                'absender'    => (string) ($k['absender'] ?? ''),
+        $recht = pult_dash_recht();
+        $vollzugriff = pult_recht_stufe($recht) >= pult_recht_stufe('voll');
+        $konten = array_map(function ($k) use ($vollzugriff) {
+            $aus = [
+                'id'         => (string) ($k['id'] ?? ''),
+                'name'       => (string) ($k['name'] ?? ''),
+                'pw_gesetzt' => ((string) ($k['pw_enc'] ?? '')) !== '',
             ];
+            if ($vollzugriff) {
+                $aus += [
+                    'host'        => (string) ($k['host'] ?? ''),
+                    'port'        => (int) ($k['port'] ?? 993),
+                    'user'        => (string) ($k['user'] ?? ''),
+                    // SMTP-Versand (keine Geheimnisse — Passwort ist dasselbe wie IMAP)
+                    'smtp_host'   => (string) ($k['smtp_host'] ?? ''),
+                    'smtp_port'   => (int) ($k['smtp_port'] ?? 465),
+                    'smtp_secure' => (string) ($k['smtp_secure'] ?? 'ssl'),
+                    'absender'    => (string) ($k['absender'] ?? ''),
+                ];
+            }
+            return $aus;
         }, pult_mailkonten());
-        $kalender = array_map(function ($k) {
+        $kalender = array_map(function ($k) use ($vollzugriff) {
             return [
                 'id'   => (string) ($k['id'] ?? ''),
                 'name' => (string) ($k['name'] ?? ''),
-                'url'  => pult_klartext((string) ($k['url'] ?? '')),   // für die Anzeige im Bearbeiten-Popup entschlüsseln
+                'url'  => $vollzugriff ? pult_klartext((string) ($k['url'] ?? '')) : '',
             ];
         }, pult_kalender());
         pult_json_ok(['einstellungen' => [
+            'recht'           => $recht,
             'owm_key_gesetzt' => ((string) ($e['owm_key'] ?? '')) !== '',
             'kalender'        => array_values($kalender),
             'mailkonten'      => array_values($konten),
@@ -794,6 +819,7 @@ switch ($action) {
         if ($body === null || !csrf_valid($body['csrf'] ?? null)) {
             pult_json_fehler('CSRF', 403);
         }
+        pult_verlangt('voll');   // Zugänge/Einstellungen darf nur der Eigentümer bzw. Voll-Recht ändern
         $cfg = pult_config();
         if (!isset($cfg['einstellungen']) || !is_array($cfg['einstellungen'])) {
             $cfg['einstellungen'] = [];
@@ -1190,6 +1216,12 @@ switch ($action) {
     // Mail: Posteingang (neueste Kopfzeilen) — gewähltes Konto
     case 'mail_liste':
         require_login_api();
+        // Der Posteingang gehört zum persönlichen Konto des Eigentümers — beigetretene
+        // Kollaboratoren dürfen ihn nicht über dessen IMAP-Zugangsdaten mitlesen.
+        if (defined('PULT_PLATFORM') && PULT_PLATFORM
+            && defined('PULT_DASH_OWNER') && PULT_DASH_OWNER !== pult_dash_eigner()) {
+            pult_json_fehler('Der Posteingang ist nur in eigenen Dashboards sichtbar.', 403);
+        }
         if (!pult_mail_verfuegbar()) {
             pult_json_fehler('imap-fehlt', 501);
         }
@@ -1203,6 +1235,11 @@ switch ($action) {
     // Mail: Klartext einer Nachricht — gewähltes Konto
     case 'mail_text':
         require_login_api();
+        // Wie mail_liste: Nachrichteninhalt nur im eigenen Dashboard, nicht für Beigetretene.
+        if (defined('PULT_PLATFORM') && PULT_PLATFORM
+            && defined('PULT_DASH_OWNER') && PULT_DASH_OWNER !== pult_dash_eigner()) {
+            pult_json_fehler('Der Posteingang ist nur in eigenen Dashboards sichtbar.', 403);
+        }
         if (!pult_mail_verfuegbar()) {
             pult_json_fehler('imap-fehlt', 501);
         }
@@ -1282,6 +1319,7 @@ switch ($action) {
         if ($body === null || !csrf_valid($body['csrf'] ?? null)) {
             pult_json_fehler('CSRF', 403);
         }
+        pult_verlangt('mitarbeiten');
         $name   = trim((string) ($body['name'] ?? ''));
         $text   = trim((string) ($body['text'] ?? ''));
         $namen  = pult_chatnamen();
@@ -1397,6 +1435,7 @@ switch ($action) {
     case 'freigabe_get':
     case 'freigabe_create':
     case 'freigabe_revoke':
+    case 'freigabe_recht':
         require_login_api();
         $istPost = $action !== 'freigabe_get';
         if ($istPost) {
@@ -1434,8 +1473,13 @@ switch ($action) {
         }
         if ($action === 'freigabe_create') {
             $items[$pos]['share_token'] = bin2hex(random_bytes(16));
+            if (!isset($items[$pos]['share_recht'])) {
+                $items[$pos]['share_recht'] = 'mitarbeiten';   // sicherer Standard: mitarbeiten, nicht voll
+            }
         } elseif ($action === 'freigabe_revoke') {
             unset($items[$pos]['share_token']);
+        } elseif ($action === 'freigabe_recht') {
+            $items[$pos]['share_recht'] = pult_recht_normal((string) ($body['recht'] ?? 'mitarbeiten'));
         }
         if ($istPost && !pult_dash_speichern($basis, $items)) {
             pult_json_fehler('Speichern fehlgeschlagen', 500);
@@ -1475,6 +1519,7 @@ switch ($action) {
             'eigen'      => true,
             'fremd'      => $fremd,
             'geteilt'    => $token !== '',
+            'recht'      => pult_recht_normal((string) ($items[$pos]['share_recht'] ?? 'mitarbeiten')),
             'name'       => (string) ($items[$pos]['name'] ?? ''),
             'link'       => ($token !== '' && $basisUrl !== '') ? ($basisUrl . '/app/?p=join&o=' . $eigner . '&d=' . $did . '&t=' . $token) : '',
         ]);

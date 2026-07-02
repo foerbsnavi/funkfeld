@@ -135,7 +135,27 @@
             const reihe = document.createElement('div');
             reihe.className = 'pe-freigabe-knoepfe';
             reihe.append(neu, weg);
-            panel.append(feld, reihe);
+            // Berechtigung der Teilnehmer
+            const rechtLabel = document.createElement('label');
+            rechtLabel.className = 'pe-label';
+            rechtLabel.textContent = 'Was Teilnehmer dürfen';
+            const rechtSel = document.createElement('select');
+            rechtSel.className = 'w-eingabe';
+            [['ansehen', 'Nur ansehen'], ['mitarbeiten', 'Mitarbeiten (Flächen & Inhalte)'], ['voll', 'Alles (auch Einstellungen)']].forEach((o) => {
+                const opt = document.createElement('option');
+                opt.value = o[0]; opt.textContent = o[1];
+                if ((d.recht || 'mitarbeiten') === o[0]) opt.selected = true;
+                rechtSel.appendChild(opt);
+            });
+            const rechtStatus = document.createElement('span');
+            rechtStatus.className = 'pe-hinweis';
+            rechtStatus.setAttribute('aria-live', 'polite');
+            rechtSel.addEventListener('change', async () => {
+                const r = await api('freigabe_recht', { id, recht: rechtSel.value });
+                rechtStatus.textContent = (r && r.ok) ? 'Berechtigung gespeichert.' : 'Speichern fehlgeschlagen.';
+            });
+            rechtLabel.appendChild(rechtSel);
+            panel.append(feld, reihe, rechtLabel, rechtStatus);
         } else {
             panel.appendChild(mkBtn('Freigabelink erstellen', async () => { await api('freigabe_create', { id }); shareRender(panel, id); }));
         }
