@@ -65,8 +65,13 @@ function pult_host_ip(string $host): ?string
     return $v4 ? $v4[0] : $v6[0];
 }
 
-/** Öffnet eine read-only IMAP-Verbindung (immer SSL) oder gibt false zurück. */
-function pult_mail_oeffnen(string $host, int $port, string $user, string $pw)
+/**
+ * Öffnet eine read-only IMAP-Verbindung (immer SSL) oder gibt false zurück.
+ * $timeout: Verbindungs-/Lese-Timeout in Sekunden. Der Lese-Pfad (Posteingang öffnen)
+ * nutzt den Standard 8; der Hintergrund-Abgleich der Neuigkeiten-Fläche einen kürzeren Wert,
+ * damit ein langsames/totes Postfach den gedrosselten Prüflauf nicht ausbremst.
+ */
+function pult_mail_oeffnen(string $host, int $port, string $user, string $pw, int $timeout = 8)
 {
     if (!pult_mail_verfuegbar() || !pult_host_erlaubt($host)) {
         return false;
@@ -78,8 +83,9 @@ function pult_mail_oeffnen(string $host, int $port, string $user, string $pw)
     if ($user === '' || strlen($user) > 255 || !preg_match('/^[\x20-\x7E]+$/', $user)) {
         return false;
     }
-    @imap_timeout(IMAP_OPENTIMEOUT, 8);
-    @imap_timeout(IMAP_READTIMEOUT, 8);
+    $timeout = max(2, min(30, $timeout));
+    @imap_timeout(IMAP_OPENTIMEOUT, $timeout);
+    @imap_timeout(IMAP_READTIMEOUT, $timeout);
     $mailbox = '{' . $host . ':' . $port . '/imap/ssl}INBOX';
     $imap = @imap_open($mailbox, $user, $pw, OP_READONLY, 1);
     return $imap ?: false;

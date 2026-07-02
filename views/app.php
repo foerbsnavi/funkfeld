@@ -12,7 +12,7 @@ $pult_js = [
     'assets/js/widgets/uhr.js', 'assets/js/widgets/wetter.js', 'assets/js/widgets/kalender.js',
     'assets/js/widgets/mail.js', 'assets/js/widgets/rss.js', 'assets/js/widgets/chat.js',
     'assets/js/widgets/karte.js', 'assets/js/widgets/livestream.js', 'assets/js/widgets/wirtschaft.js',
-    'assets/js/widgets/custom.js', 'assets/js/pult.js',
+    'assets/js/widgets/custom.js', 'assets/js/widgets/neuigkeiten.js', 'assets/js/pult.js',
 ];
 // Cache-Buster: neueste Änderungszeit über ALLE Assets (CSS + JS), damit auch ein einzelnes
 // Widget-Update sofort greift statt eine veraltete Datei aus dem Browser-Cache zu liefern.
@@ -82,6 +82,7 @@ $ver = (string) max($ver_zeiten);
             <button type="button" class="tb-btn fab-item" data-typ="livestream">Livestream</button>
             <button type="button" class="tb-btn fab-item" data-typ="wirtschaft">Wirtschaft</button>
             <button type="button" class="tb-btn fab-item" data-typ="custom">Custom</button>
+            <button type="button" class="tb-btn fab-item" data-typ="neuigkeiten">Neuigkeiten</button>
         </div>
         <button type="button" class="fab-btn" id="fab-btn" aria-controls="werkzeuge" aria-expanded="false"
                 aria-label="Fläche hinzufügen">＋</button>

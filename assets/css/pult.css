@@ -1105,6 +1105,20 @@ body.zieht { user-select: none; cursor: grabbing; }
 .w-datei-groesse { flex: 0 0 auto; color: var(--text-leise); font-size: 0.78rem; }
 .w-datei-status { display: block; margin-top: 0.3rem; color: var(--text-leise); font-size: 0.8rem; }
 
+/* Neuigkeiten-Fläche (Aktivitäts-Verlauf) */
+.w-neuigkeiten { display: flex; flex-direction: column; gap: 0.4rem; flex: 1 1 auto; min-height: 0; }
+.w-neu-liste { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.w-neu-eintrag {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    padding: 0.4rem 0.2rem;
+    border-bottom: 1px solid var(--linie);
+}
+.w-neu-eintrag:last-child { border-bottom: 0; }
+.w-neu-text { flex: 1 1 auto; min-width: 0; font-size: 0.86rem; color: var(--text); word-break: break-word; }
+.w-neu-zeit { flex: 0 0 auto; font-size: 0.76rem; color: var(--text-leise); font-variant-numeric: tabular-nums; }
+
 /* ---------------------------------------------------------
    Gestapelte Ansicht — Flächen gleich groß im Gitter.
    JS setzt .gestapelt bei Raster-Knopf ODER auf dem Handy.

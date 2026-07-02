@@ -1,7 +1,16 @@
 {
-    "version": "1.3.0",
+    "version": "1.4.0",
     "date": "2026-07-02",
     "changelog": [
+        {
+            "version": "1.4.0",
+            "date": "2026-07-02",
+            "changes": [
+                "Neue Fläche „Neuigkeiten“: zeigt automatisch alle Änderungen im Dashboard als Verlauf — Notiz/Aufgaben/Tabelle/Links/Telefonbuch geändert, Karte hinzugefügt oder entfernt, Datei hochgeladen, Chat-Nachricht. Kein Einrichten nötig, die Fläche sieht alles.",
+                "Erkennt zusätzlich — solange das Dashboard offen ist — neue Mails („2 neue Mails“) und neue RSS-Beiträge.",
+                "Neutral gehalten: nur die Tatsache und der Kartenname, keine Namen und keine Inhalts-Auszüge. In geteilten Dashboards bleiben die Mail-Meldungen dem Eigentümer vorbehalten."
+            ]
+        },
         {
             "version": "1.3.0",
             "date": "2026-07-02",

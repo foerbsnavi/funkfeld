@@ -107,6 +107,8 @@ define('PULT_DASHBOARD', PULT_DATA . '/dashboard.json');
 define('PULT_BLOCKS', PULT_DATA . '/blocks');
 define('PULT_FILES', PULT_DATA . '/files');
 define('PULT_CHAT', PULT_DATA . '/chat.json');
+define('PULT_AKTIVITAET', PULT_DATA . '/aktivitaet.json');
+define('PULT_AKT_STAND', PULT_DATA . '/aktivitaet_stand.json');   // Wasserzeichen Mail/Feeds (nicht im Live-Sync)
 
 // CSRF-Token einmal pro Session erzeugen
 if (empty($_SESSION['csrf'])) {

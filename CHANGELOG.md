@@ -4,6 +4,18 @@ Alle nennenswerten Änderungen an Funkfeld werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/),
 Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.4.0] – 2026-07-02
+
+### Neu
+- **Neuigkeiten-Fläche:** Eine neue Fläche zeigt automatisch alle Änderungen im Dashboard als chronologischen Verlauf — kein Einrichten, keine Verkabelung nötig, sie sieht alles:
+  - Notiz / Aufgaben / Tabelle / Links / Telefonbuch **geändert**, Karte **hinzugefügt** oder **entfernt**, Datei **hochgeladen**, neue **Chat-Nachricht**.
+  - Zusätzlich — solange das Dashboard offen ist — **neue Mails** („2 neue Mails") und **neue RSS-Beiträge** (gedrosselt im Minutentakt, kein Cron nötig).
+- Neutral gehalten: nur die Tatsache + Kartenname, **keine Namen, keine Inhalts-Auszüge**.
+
+### Sicherheit
+- In geteilten Dashboards bleiben **Mail-Meldungen dem Eigentümer vorbehalten** (wie der Posteingang selbst): Beigetretene Mitglieder lösen keine Postfach-Abfrage aus und sehen keine Mail-Einträge im Verlauf. RSS-Meldungen (Board-Inhalt) sind für alle sichtbar.
+- Feed-Abrufe laufen über die bestehende SSRF-/DNS-Rebinding-Prüfung; der externe Abgleich ist gedrosselt und zeitbudgetiert (kein Blockieren des Servers).
+
 ## [1.3.0] – 2026-07-02
 
 ### Neu

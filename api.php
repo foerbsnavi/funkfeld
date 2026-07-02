@@ -6,6 +6,7 @@ require_once __DIR__ . '/core/feeds.php';
 require_once __DIR__ . '/core/parse.php';
 require_once __DIR__ . '/core/crypto.php';
 require_once __DIR__ . '/core/mail.php';
+require_once __DIR__ . '/core/aktivitaet.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -362,9 +363,12 @@ switch ($action) {
         if ($layout === null) {
             pult_json_fehler('ungültiges Layout');
         }
+        // Flächen vor dem Überschreiben merken (für „Karte hinzugefügt/entfernt" im Neuigkeiten-Log).
+        $altDash = store_read(PULT_DASHBOARD, null);
         if (!store_write(PULT_DASHBOARD, $layout)) {
             pult_json_fehler('Speichern fehlgeschlagen', 500);
         }
+        pult_akt_layout_diff($altDash, $layout);
         pult_json_ok();
         break;
 
@@ -390,6 +394,10 @@ switch ($action) {
         $content = pult_clean_block($typ, $body['content'] ?? []);
         if (!pult_block_write($id, $content)) {
             pult_json_fehler('Speichern fehlgeschlagen', 500);
+        }
+        // Neuigkeiten-Log: nur inhaltlich editierbare Karten melden „geändert" (gebündelt).
+        if (in_array($typ, PULT_AKT_INHALT_TYPEN, true)) {
+            pult_akt($typ, 'geaendert', pult_akt_titel((string) $id));
         }
         pult_json_ok();
         break;
@@ -438,7 +446,8 @@ switch ($action) {
             }
         }
         $chatMtime = is_file(PULT_CHAT) ? (int) filemtime(PULT_CHAT) : 0;
-        pult_json_ok(['layout' => $layoutMtime, 'bloecke' => $bstempel, 'chat' => $chatMtime]);
+        $aktMtime  = is_file(PULT_AKTIVITAET) ? (int) filemtime(PULT_AKTIVITAET) : 0;
+        pult_json_ok(['layout' => $layoutMtime, 'bloecke' => $bstempel, 'chat' => $chatMtime, 'aktivitaet' => $aktMtime]);
         break;
 
     // Einzelnen Block-Inhalt + Zeitstempel lesen (für die Live-Karte: schneller, gezielter Poll)
@@ -719,6 +728,7 @@ switch ($action) {
         }
         $name = pult_kurz(str_replace(["\r", "\n"], '', (string) ($_FILES['datei']['name'] ?? 'Datei')), 255);
         store_write(pult_file_meta_pfad($fid), ['name' => $name, 'size' => $groesse]);
+        pult_akt('dateien', 'datei', $name);   // Neuigkeiten-Log: „Datei hochgeladen"
         pult_json_ok(['datei' => ['id' => $fid, 'name' => $name, 'size' => $groesse]]);
         break;
 
@@ -1309,6 +1319,38 @@ switch ($action) {
         pult_json_ok(['nachrichten' => array_slice($liste, -100)]);
         break;
 
+    // Neuigkeiten-Log lesen (speist die Neuigkeiten-Fläche). Lesen genügt jedes Recht.
+    case 'aktivitaet_get':
+        require_login_api();
+        $eintraege = pult_akt_liste(60);
+        // Mail-Ereignisse sind — wie der Posteingang selbst — eigentümer-privat.
+        // Beigetretene Mitglieder sehen die übrigen (Board-)Neuigkeiten, aber keine Mail-Zähler.
+        if (defined('PULT_PLATFORM') && PULT_PLATFORM
+            && defined('PULT_DASH_OWNER') && PULT_DASH_OWNER !== pult_dash_eigner()) {
+            $eintraege = array_values(array_filter($eintraege, function ($e) {
+                return (string) ($e['aktion'] ?? '') !== 'mail';
+            }));
+        }
+        pult_json_ok(['eintraege' => $eintraege]);
+        break;
+
+    // Externer Abgleich (Mail/Feeds) — von der Neuigkeiten-Fläche im Minutentakt angestoßen,
+    // serverseitig gedrosselt. Mail nur im EIGENEN Dashboard (Posteingang ist privat).
+    case 'aktivitaet_pruefen':
+        require_login_api();
+        if ($method !== 'POST') {
+            pult_json_fehler('nur POST', 405);
+        }
+        $body = pult_body();
+        if ($body === null || !csrf_valid($body['csrf'] ?? null)) {
+            pult_json_fehler('CSRF', 403);
+        }
+        $eigenes = !(defined('PULT_PLATFORM') && PULT_PLATFORM
+            && defined('PULT_DASH_OWNER') && PULT_DASH_OWNER !== pult_dash_eigner());
+        pult_akt_pruefen($eigenes ? pult_mailkonten() : []);
+        pult_json_ok();
+        break;
+
     // Chat: Nachricht senden — Name muss aus der erlaubten Liste stammen
     case 'chat_senden':
         require_login_api();
@@ -1335,6 +1377,7 @@ switch ($action) {
         if (!pult_chat_anhaengen($eintrag)) {
             pult_json_fehler('Speichern fehlgeschlagen', 500);
         }
+        pult_akt('chat', 'chat');   // Neuigkeiten-Log: „Neue Chat-Nachricht" (neutral, ohne Name/Text)
         pult_json_ok();
         break;
 

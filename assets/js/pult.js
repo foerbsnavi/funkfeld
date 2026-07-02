@@ -101,7 +101,8 @@
         karte:       { titel: 'Karte', b: 380, h: 320 },
         livestream:  { titel: 'Livestream', b: 360, h: 300 },
         wirtschaft:  { titel: 'Wirtschaft', b: 400, h: 300 },
-        custom:      { titel: 'Custom', b: 360, h: 300 }
+        custom:      { titel: 'Custom', b: 360, h: 300 },
+        neuigkeiten: { titel: 'Neuigkeiten', b: 300, h: 320 }
     };
 
     /** Fokus-Ziel, wenn keine Fläche mehr da ist (der Hinzufügen-Knopf). */

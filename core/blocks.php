@@ -7,7 +7,7 @@ declare(strict_types=1);
  */
 
 /** Die bekannten Inhalts-Typen — zentral, damit neue Typen nur hier ergänzt werden. */
-const PULT_WIDGET_TYPEN = ['notiz', 'checkliste', 'links', 'tabelle', 'telefonbuch', 'dateien', 'uhr', 'wetter', 'kalender', 'mail', 'rss', 'chat', 'karte', 'livestream', 'wirtschaft', 'custom'];
+const PULT_WIDGET_TYPEN = ['notiz', 'checkliste', 'links', 'tabelle', 'telefonbuch', 'dateien', 'uhr', 'wetter', 'kalender', 'mail', 'rss', 'chat', 'karte', 'livestream', 'wirtschaft', 'custom', 'neuigkeiten'];
 
 /** Kürzt und trimmt einen String auf eine Maximallänge. */
 function pult_kurz(string $s, int $max): string
