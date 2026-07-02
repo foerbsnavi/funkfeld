@@ -350,7 +350,9 @@ function pult_clean_karte($content): array
             'id'    => $id,
             'lat'   => $mlat,
             'lng'   => $mlng,
-            'titel' => pult_kurz((string) ($m['titel'] ?? ''), 120),
+            // strip_tags als Defense-in-Depth (die Karte rendert den Titel client-seitig
+            // ohnehin nur als textContent) — schützt auch importierte/fremde Datenbestände.
+            'titel' => pult_kurz(strip_tags((string) ($m['titel'] ?? '')), 120),
         ];
         if (count($marker) >= 300) {
             break;

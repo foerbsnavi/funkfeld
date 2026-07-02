@@ -2,8 +2,10 @@
 declare(strict_types=1);
 
 /**
- * Mail (IMAP, nur Lesen). Verbindung immer per SSL. Das Passwort wird NIE
- * gespeichert — es liegt nur im Session-Speicher (siehe api.php).
+ * Mail (IMAP, nur Lesen). Verbindung immer per SSL. Das Passwort wird
+ * verschlüsselt gespeichert (AES-256-GCM via core/crypto.php, Feld pw_enc in den
+ * Einstellungen) und nur serverseitig für die IMAP-Verbindung entschlüsselt —
+ * es verlässt den Server nie (einstellung_get liefert nur „gesetzt?").
  *
  * Sicherheit: der Host wird streng geprüft (nur Hostname/IPv4-Zeichen → keine
  * imap_open-Einschleusung) und muss auf eine öffentliche IP zeigen (kein SSRF

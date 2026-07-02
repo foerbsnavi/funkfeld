@@ -411,7 +411,9 @@ switch ($action) {
         pult_json_ok();
         break;
 
-    // Live-Sync: günstige Änderungs-Stempel (Datei-Zeitstempel) von Layout + Blöcken
+    // Live-Sync: günstige Änderungs-Stempel (Datei-Zeitstempel) von Layout + Blöcken + Chat.
+    // Der Chat-Stempel versorgt die Chat-Flächen über den zentralen Sync-Poll —
+    // sie laden die Nachrichtenliste nur noch bei tatsächlicher Änderung nach.
     case 'zustand':
         require_login_api();
         clearstatcache();
@@ -423,7 +425,8 @@ switch ($action) {
                 $bstempel[$bid] = (int) filemtime($f);
             }
         }
-        pult_json_ok(['layout' => $layoutMtime, 'bloecke' => $bstempel]);
+        $chatMtime = is_file(PULT_CHAT) ? (int) filemtime(PULT_CHAT) : 0;
+        pult_json_ok(['layout' => $layoutMtime, 'bloecke' => $bstempel, 'chat' => $chatMtime]);
         break;
 
     // Einzelnen Block-Inhalt + Zeitstempel lesen (für die Live-Karte: schneller, gezielter Poll)
@@ -534,6 +537,13 @@ switch ($action) {
         if (count($items) >= 50) {
             pult_json_fehler('Maximale Anzahl Dashboards erreicht');
         }
+        // Namens-Kollision vermeiden: existiert der Name schon, „ (Import)“ anhängen
+        foreach ($items as $it) {
+            if ((string) ($it['name'] ?? '') === $name) {
+                $name = mb_substr($name, 0, 51) . ' (Import)';
+                break;
+            }
+        }
         $neuId = pult_dash_gen_id();
         $dir   = pult_dash_dir($basis, $neuId);
         if (!@mkdir($dir . '/blocks', 0775, true) && !is_dir($dir . '/blocks')) {
@@ -564,7 +574,8 @@ switch ($action) {
             pult_json_fehler('Updates werden zentral verwaltet');
         }
         $lokal  = (string) (store_read(PULT_ROOT . '/version.json', [])['version'] ?? '0');
-        $roh    = pult_fetch('https://funkfeld.brosemedien.de/files/funkfeld_version.json', 262144, 10, true);
+        // maxHops=0: keine Weiterleitungen — der Abruf bleibt fest an die Update-Domain gebunden
+        $roh    = pult_fetch('https://funkfeld.brosemedien.de/files/funkfeld_version.json', 262144, 10, true, 0);
         $remote = $roh !== null ? json_decode($roh, true) : null;
         if (!is_array($remote) || !isset($remote['version'])) {
             pult_json_fehler('Update-Server nicht erreichbar', 502);
@@ -593,13 +604,15 @@ switch ($action) {
         if (!class_exists('ZipArchive')) {
             pult_json_fehler('PHP-Erweiterung ZipArchive fehlt auf diesem Server');
         }
-        $roh    = pult_fetch('https://funkfeld.brosemedien.de/files/funkfeld_version.json', 262144, 10, true);
+        // maxHops=0: keine Weiterleitungen — die Host-Prüfung unten darf nicht per Redirect
+        // umgangen werden (das ZIP überschreibt Programmcode → sonst wäre RCE möglich).
+        $roh    = pult_fetch('https://funkfeld.brosemedien.de/files/funkfeld_version.json', 262144, 10, true, 0);
         $remote = $roh !== null ? json_decode($roh, true) : null;
         $url    = is_array($remote) ? (string) ($remote['download_url'] ?? '') : '';
         if ($url === '' || parse_url($url, PHP_URL_SCHEME) !== 'https' || parse_url($url, PHP_URL_HOST) !== 'funkfeld.brosemedien.de') {
             pult_json_fehler('Ungültige Download-Adresse', 502);
         }
-        $zipRoh = pult_fetch($url, 25165824, 30, true);   // bis 24 MB
+        $zipRoh = pult_fetch($url, 25165824, 30, true, 0);   // bis 24 MB, keine Weiterleitungen
         if ($zipRoh === null) {
             pult_json_fehler('Download fehlgeschlagen', 502);
         }
@@ -994,9 +1007,13 @@ switch ($action) {
         $startTs = time() - $tage * 86400;
         $reihen = [];
 
-        // CoinGecko: Bitcoin + Gold (PAX-Gold) in USD
+        // CoinGecko: Bitcoin + Gold (PAX-Gold) in USD.
+        // Die kostenlose API liefert höchstens die letzten 365 Tage — längere Anfragen
+        // werden abgewiesen. Deshalb bei 2/5 Jahren auf 365 Tage kappen und die Reihe
+        // als Teilverlauf kennzeichnen (statt sie kommentarlos wegzulassen).
+        $cgTage = min($tage, 365);
         foreach ([['bitcoin', 'Bitcoin', '#f7931a'], ['pax-gold', 'Gold', '#e0b100']] as $cg) {
-            $roh = pult_fetch('https://api.coingecko.com/api/v3/coins/' . $cg[0] . '/market_chart?vs_currency=usd&days=' . $tage, 2097152, 8, true);
+            $roh = pult_fetch('https://api.coingecko.com/api/v3/coins/' . $cg[0] . '/market_chart?vs_currency=usd&days=' . $cgTage, 2097152, 8, true);
             $d   = $roh !== null ? json_decode($roh, true) : null;
             $pts = (is_array($d) && isset($d['prices']) && is_array($d['prices'])) ? $d['prices'] : [];
             $werte = [];
@@ -1007,7 +1024,11 @@ switch ($action) {
                 $werte[] = ['t' => round(((float) $p[0] / 1000.0 - $startTs) / 86400.0, 3), 'v' => (float) $p[1]];
             }
             if ($werte) {
-                $reihen[] = ['key' => $cg[0], 'name' => $cg[1], 'farbe' => $cg[2], 'werte' => $werte];
+                $reihe = ['key' => $cg[0], 'name' => $cg[1], 'farbe' => $cg[2], 'werte' => $werte];
+                if ($cgTage < $tage) {
+                    $reihe['teil'] = 'nur letzte 12 Monate';   // Datenquelle deckt die Spanne nicht ab
+                }
+                $reihen[] = $reihe;
             }
         }
 
@@ -1096,9 +1117,10 @@ switch ($action) {
         if (!pult_url_erlaubt($url)) {
             pult_json_fehler('Kalender-Adresse nicht erlaubt (nur http/https, keine internen Server)');
         }
-        $roh = pult_fetch($url, 1048576, 8, true);   // strikt: ohne cURL kein Fallback
+        $erg = pult_fetch_info($url, 1048576, 8, true);   // strikt: ohne cURL kein Fallback
+        $roh = $erg['body'];
         if ($roh === null) {
-            pult_json_fehler('Kalender nicht erreichbar', 502);
+            pult_json_fehler('Kalender nicht erreichbar (' . ($erg['fehler'] ?? 'unbekannt') . ')', 502);
         }
         $jetzt   = time();
         $kommend = [];
@@ -1142,9 +1164,10 @@ switch ($action) {
         if (!pult_url_erlaubt($url)) {
             pult_json_fehler('Adresse nicht erlaubt (nur http/https, keine internen Server)');
         }
-        $rohrss = pult_fetch($url, 1048576, 8, true);
+        $ergRss = pult_fetch_info($url, 1048576, 8, true);
+        $rohrss = $ergRss['body'];
         if ($rohrss === null) {
-            pult_json_fehler('Feed nicht erreichbar', 502);
+            pult_json_fehler('Feed nicht erreichbar (' . ($ergRss['fehler'] ?? 'unbekannt') . ')', 502);
         }
         $eintraege = pult_rss_parse($rohrss);
         pult_cache_set($ckey, $eintraege);
@@ -1356,6 +1379,31 @@ switch ($action) {
         }
         if ($istPost && !pult_dash_speichern($basis, $items)) {
             pult_json_fehler('Speichern fehlgeschlagen', 500);
+        }
+        if ($action === 'freigabe_revoke') {
+            // Rückwirkend (erst NACH erfolgreich persistiertem Token-Entzug): bereits
+            // beigetretene Konten verlieren den Zugriff sofort — ihre joined-Einträge
+            // für dieses Dashboard werden aus allen benutzer.json entfernt.
+            foreach (glob(PULT_APPDATA . '/u_*', GLOB_ONLYDIR) ?: [] as $kontoDir) {
+                if (!preg_match('/^u_[a-f0-9]{24}$/', basename($kontoDir))) {
+                    continue;
+                }
+                $bfDatei = $kontoDir . '/benutzer.json';
+                if (!is_file($bfDatei)) {
+                    continue;
+                }
+                $bu = store_read($bfDatei, []);
+                if (!is_array($bu['joined'] ?? null)) {
+                    continue;
+                }
+                $vorher = count($bu['joined']);
+                $bu['joined'] = array_values(array_filter($bu['joined'], function ($e) use ($eigner, $did) {
+                    return !(is_array($e) && ($e['o'] ?? '') === $eigner && ($e['d'] ?? '') === $did);
+                }));
+                if (count($bu['joined']) !== $vorher) {
+                    store_write($bfDatei, $bu);
+                }
+            }
         }
         $token = (string) ($items[$pos]['share_token'] ?? '');
         // Freigabelink auf der aktuellen Instanz aufbauen (nicht fest auf eine Domain)

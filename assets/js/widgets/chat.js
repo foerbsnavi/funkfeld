@@ -66,7 +66,7 @@
             let aktiv = '';
             let letzteSig = null;
             let ersterLauf = true;
-            let aussetzen = 0;          // Backoff-Zähler (Polling) nach Fehlern
+            let letzterStempel = null;  // Chat-Änderungsstempel aus dem zentralen Sync-Poll
             try { aktiv = localStorage.getItem(NAME_KEY) || ''; } catch (e) { /* Privatmodus */ }
 
             function eingabeAktiv(an) { feld.disabled = !an; sendBtn.disabled = !an; }
@@ -132,10 +132,8 @@
                     const r = await fetch('api.php?action=chat_liste', { credentials: 'same-origin' });
                     data = await r.json();
                 } catch (e) {
-                    aussetzen = Math.min(aussetzen + 2, 12);   // Backoff bei Fehlern
-                    return;
+                    return;   // nächste Sync-Runde versucht es erneut
                 }
-                aussetzen = 0;
                 if (!data.ok || !Array.isArray(data.nachrichten)) return;
                 const sig = JSON.stringify(data.nachrichten);
                 if (sig === letzteSig) { ersterLauf = false; return; }   // nichts Neues
@@ -210,13 +208,25 @@
                 else { await ladeNachrichten(); }
             })();
 
-            // Selbst-Aktualisierung alle 5 Sekunden (pausiert bei verstecktem Tab / offenem Popup, Backoff bei Fehlern)
-            const timer = setInterval(() => {
-                if (!container.isConnected) { clearInterval(timer); return; }
-                if (document.hidden || document.querySelector('.pult-modal-overlay')) return;
-                if (aussetzen > 0) { aussetzen--; return; }
-                ladeNachrichten();
-            }, 5000);
+            // Aktualisierung über den zentralen Sync-Poll (window.pultSync): erst wenn der
+            // Chat-Änderungsstempel sich bewegt, wird die Liste nachgeladen — statt eines
+            // eigenen 5-Sekunden-Polls je Chat-Fläche.
+            if (window.pultSync) {
+                window.pultSync.abonnieren(container, (z) => {
+                    if (document.querySelector('.pult-modal-overlay')) return;
+                    const stempel = Number(z && z.chat) || 0;
+                    if (stempel === letzterStempel) return;
+                    letzterStempel = stempel;
+                    ladeNachrichten();
+                });
+            } else {
+                // Rückfall ohne zentralen Sync (sollte nicht vorkommen — Dateien werden zusammen ausgeliefert)
+                const timer = setInterval(() => {
+                    if (!container.isConnected) { clearInterval(timer); return; }
+                    if (document.hidden || document.querySelector('.pult-modal-overlay')) return;
+                    ladeNachrichten();
+                }, 15000);
+            }
         }
     };
 })();

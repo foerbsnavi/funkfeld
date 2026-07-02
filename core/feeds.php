@@ -73,20 +73,41 @@ function pult_url_erlaubt(string $url): bool
     return pult_url_aufloesen($url) !== null;
 }
 
-/**
- * Lädt eine URL serverseitig. Folgt KEINEN Weiterleitungen (SSRF-Umgehung),
- * begrenzt Größe und Zeit. Gibt den Body oder null zurück.
- */
-function pult_fetch(string $url, int $maxBytes = 1048576, int $timeout = 8, bool $strikt = false): ?string
+/** Location-Header einer Weiterleitung gegen die Ausgangs-URL auflösen (→ absolute URL oder null). */
+function pult_url_absolut(string $location, string $basis): ?string
 {
-    $ziel = pult_url_aufloesen($url);
-    if ($ziel === null) {
+    $location = trim($location);
+    if ($location === '') {
         return null;
     }
+    if (preg_match('#^https?://#i', $location)) {
+        return $location;
+    }
+    $b = parse_url($basis);
+    if (!$b || empty($b['scheme']) || empty($b['host'])) {
+        return null;
+    }
+    $wurzel = $b['scheme'] . '://' . $b['host'] . (isset($b['port']) ? ':' . $b['port'] : '');
+    if (strpos($location, '//') === 0) {
+        return $b['scheme'] . ':' . $location;
+    }
+    if ($location[0] === '/') {
+        return $wurzel . $location;
+    }
+    $pfad = isset($b['path']) ? preg_replace('#/[^/]*$#', '/', $b['path']) : '/';
+    return $wurzel . $pfad . $location;
+}
 
+/**
+ * EIN einzelner Abruf ohne Weiterleitung, gepinnt auf die geprüfte IP.
+ * Rückgabe null bei Transportfehler, sonst ['code','body','location','zuGross'].
+ */
+function pult_fetch_einmal(string $url, array $ziel, int $maxBytes, int $timeout, bool $strikt): ?array
+{
     if (function_exists('curl_init')) {
-        $daten   = '';
-        $zuGross = false;
+        $daten    = '';
+        $zuGross  = false;
+        $location = '';
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_FOLLOWLOCATION => false,
@@ -98,6 +119,12 @@ function pult_fetch(string $url, int $maxBytes = 1048576, int $timeout = 8, bool
             CURLOPT_USERAGENT      => 'Funkfeld/1.0 (+selbstgehostet)',
             CURLOPT_PROTOCOLS      => CURLPROTO_HTTP | CURLPROTO_HTTPS,
             CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            CURLOPT_HEADERFUNCTION => function ($ch, $zeile) use (&$location) {
+                if (stripos($zeile, 'Location:') === 0) {
+                    $location = trim(substr($zeile, 9));
+                }
+                return strlen($zeile);
+            },
             CURLOPT_WRITEFUNCTION  => function ($ch, $chunk) use (&$daten, $maxBytes, &$zuGross) {
                 $daten .= $chunk;
                 if (strlen($daten) > $maxBytes) {
@@ -110,11 +137,10 @@ function pult_fetch(string $url, int $maxBytes = 1048576, int $timeout = 8, bool
         $ok   = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-
-        if ($zuGross || $ok === false || $code < 200 || $code >= 300) {
+        if ($ok === false && !$zuGross) {
             return null;
         }
-        return $daten;
+        return ['code' => $code, 'body' => $daten, 'location' => $location, 'zuGross' => $zuGross];
     }
 
     // Bei nutzerdefinierten URLs (Kalender/RSS) ohne cURL gar nicht laden:
@@ -135,15 +161,67 @@ function pult_fetch(string $url, int $maxBytes = 1048576, int $timeout = 8, bool
     if ($body === false) {
         return null;
     }
-    // HTTP-Status aus den Antwort-Headern prüfen (sonst käme auch ein 4xx/5xx-Body durch)
-    if (isset($http_response_header[0])
-        && preg_match('#^HTTP/\S+\s+(\d{3})#', $http_response_header[0], $m)) {
-        $code = (int) $m[1];
-        if ($code < 200 || $code >= 300) {
-            return null;
+    $code = 200;
+    $location = '';
+    foreach ((array) ($http_response_header ?? []) as $h) {
+        if (preg_match('#^HTTP/\S+\s+(\d{3})#', $h, $m)) {
+            $code = (int) $m[1];
+        } elseif (stripos($h, 'Location:') === 0) {
+            $location = trim(substr($h, 9));
         }
     }
-    return $body;
+    return ['code' => $code, 'body' => $body, 'location' => $location, 'zuGross' => false];
+}
+
+/**
+ * Lädt eine URL serverseitig mit Details für Fehlermeldungen.
+ * Folgt höchstens $maxHops Weiterleitungen (Standard 2) — jedes Ziel durchläuft
+ * erneut die volle SSRF-Prüfung (nur http/https, nur öffentliche IPs) und wird
+ * auf die geprüfte IP gepinnt. $maxHops=0 verbietet Weiterleitungen komplett
+ * (Pflicht für host-gebundene Abrufe wie das Selbst-Update — sonst könnte ein
+ * Redirect die Host-Bindung aushebeln).
+ * Rückgabe: ['body' => ?string, 'code' => int, 'fehler' => ?string].
+ */
+function pult_fetch_info(string $url, int $maxBytes = 1048576, int $timeout = 8, bool $strikt = false, int $maxHops = 2): array
+{
+    $aktuell = $url;
+    for ($hop = 0; $hop <= $maxHops; $hop++) {
+        $ziel = pult_url_aufloesen($aktuell);
+        if ($ziel === null) {
+            return ['body' => null, 'code' => 0,
+                'fehler' => $hop === 0 ? 'Adresse nicht erlaubt (nur http/https, keine internen Server)'
+                                       : 'Weiterleitungsziel nicht erlaubt'];
+        }
+        $antwort = pult_fetch_einmal($aktuell, $ziel, $maxBytes, $timeout, $strikt);
+        if ($antwort === null) {
+            return ['body' => null, 'code' => 0, 'fehler' => 'nicht erreichbar (Verbindung fehlgeschlagen)'];
+        }
+        if ($antwort['code'] >= 300 && $antwort['code'] < 400) {
+            $naechste = pult_url_absolut($antwort['location'], $aktuell);
+            if ($naechste === null) {
+                return ['body' => null, 'code' => $antwort['code'], 'fehler' => 'Weiterleitung ohne gültiges Ziel'];
+            }
+            $aktuell = $naechste;
+            continue;
+        }
+        if ($antwort['zuGross']) {
+            return ['body' => null, 'code' => $antwort['code'], 'fehler' => 'Antwort zu groß'];
+        }
+        if ($antwort['code'] < 200 || $antwort['code'] >= 300) {
+            return ['body' => null, 'code' => $antwort['code'], 'fehler' => 'HTTP ' . $antwort['code']];
+        }
+        return ['body' => $antwort['body'], 'code' => $antwort['code'], 'fehler' => null];
+    }
+    return ['body' => null, 'code' => 0, 'fehler' => 'zu viele Weiterleitungen'];
+}
+
+/**
+ * Lädt eine URL serverseitig (Kompatibilitäts-Wrapper). Begrenzte Weiterleitungen
+ * mit erneuter SSRF-Prüfung je Ziel, Größen- und Zeitlimit. Body oder null.
+ */
+function pult_fetch(string $url, int $maxBytes = 1048576, int $timeout = 8, bool $strikt = false, int $maxHops = 2): ?string
+{
+    return pult_fetch_info($url, $maxBytes, $timeout, $strikt, $maxHops)['body'];
 }
 
 /* --- einfacher Datei-Cache unter data/cache/ --- */

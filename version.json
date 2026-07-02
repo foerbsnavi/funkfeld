@@ -1,12 +1,31 @@
 {
-    "version": "1.0.1",
-    "date": "2026-06-30",
+    "version": "1.0.2",
+    "date": "2026-07-02",
     "changelog": [
+        {
+            "version": "1.0.2",
+            "date": "2026-07-02",
+            "changes": [
+                "Raster- und Handy-Ansicht: leere erste Kachel behoben (unsichtbarer Platzhalter belegte eine Gitter-Zelle).",
+                "Deutlich weniger Hintergrund-Anfragen: Chat und Live-Karte laufen jetzt über den zentralen Live-Sync statt über eigene Abfrage-Timer je Fläche.",
+                "Wetter und Karte lösen beim bloßen Öffnen des Dashboards keine unnötigen Speicher- oder Fehl-Anfragen mehr aus.",
+                "Wirtschaft: Bei Spannen über einem Jahr zeigen Bitcoin und Gold den verfügbaren Teilverlauf mit Hinweis (Datenquelle liefert höchstens 12 Monate) statt kommentarlos zu fehlen.",
+                "Kalender und RSS folgen Weiterleitungen jetzt kontrolliert (mit voller Sicherheitsprüfung je Ziel) — Feeds wie tagesschau.de funktionieren; Fehlermeldungen nennen den Grund.",
+                "Freigabe aufheben wirkt rückwirkend: Bereits beigetretene Konten verlieren den Zugriff sofort.",
+                "Selbst-Update lädt strikt nur noch direkt von der Update-Domain (keine Weiterleitungen).",
+                "Dashboard-Übersicht: Umbenennen speichert nicht mehr doppelt und aktualisiert die Vorlese-Beschriftungen der Knöpfe.",
+                "Import: Ein Dashboard mit bereits vergebenem Namen erhält den Zusatz „(Import)“.",
+                "Neue Flächen erscheinen an einer freien Stelle statt fast deckungsgleich übereinander.",
+                "Livestream ohne Adresse zeigt kein kaputtes Bild-Symbol mehr.",
+                "Markenschrift wird als WOFF2 geladen (rund zwei Drittel kleinerer Download)."
+            ]
+        },
         {
             "version": "1.0.1",
             "date": "2026-06-30",
             "changes": [
-                "(Änderungen ergänzen)"
+                "Hinzufügen-Menü (FAB): Der Schließen-Knopf bleibt an der Position des Plus-Knopfs.",
+                "README deutlich ausgebaut (Funktionen, Ansichten, Installation, Update, Sicherheit, Technik)."
             ]
         },
         {

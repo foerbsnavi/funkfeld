@@ -78,6 +78,13 @@
                     chg.textContent = (a > 0 ? '+' : '') + a + ' %';
                     chg.style.color = farbeAenderung(a);
                     el.append(punkt, txt, chg);
+                    if (r.teil) {
+                        // Datenquelle deckt die gewählte Spanne nicht ab (z. B. CoinGecko max. 1 Jahr)
+                        const hinweis = document.createElement('span');
+                        hinweis.className = 'w-wi-teil';
+                        hinweis.textContent = ' (' + r.teil + ')';
+                        el.appendChild(hinweis);
+                    }
                     legende.appendChild(el);
                 });
             }

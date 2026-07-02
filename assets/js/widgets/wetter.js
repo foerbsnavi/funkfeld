@@ -85,10 +85,23 @@
                 if (window.pultAnsage) window.pultAnsage(t);
             }
 
+            let letzterOrt = String((inhalt && inhalt.ort) || '');
+
             async function laden() {
                 const ort = ortFeld.value.trim();
-                aenderung({ ort });                       // Ort speichern
+                if (ort !== letzterOrt) {                 // Ort nur speichern, wenn er sich geändert hat
+                    letzterOrt = ort;                     // (sonst schreibt jedes Seiten-Laden den Block neu)
+                    aenderung({ ort });
+                }
                 if (!ort) { anzeige.textContent = ''; return; }
+                // Ohne hinterlegten Schlüssel gar nicht erst anfragen (spart den 400er bei jedem Laden)
+                if (window.pultEinstellung) {
+                    const e = await window.pultEinstellung().catch(() => null);
+                    if (e && e.owm_key_gesetzt === false) {
+                        status('Kein API-Schlüssel — in den Einstellungen hinterlegen.', true);
+                        return;
+                    }
+                }
                 status('Lädt…');
                 try {
                     const res = await fetch('api.php?action=wetter&ort=' + encodeURIComponent(ort),

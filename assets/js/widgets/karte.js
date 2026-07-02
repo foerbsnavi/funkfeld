@@ -41,6 +41,10 @@
     };
 
     function genId(p) { return p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+    // Marker-Beschriftung als Text-Element (nie als HTML-String) — Leaflet würde einen
+    // String-Tooltip per innerHTML rendern; ein Element mit textContent ist XSS-sicher,
+    // auch für Titel aus fremden/geteilten Dashboards oder importierten Daten.
+    function labelEl(text) { const s = document.createElement('span'); s.textContent = String(text || ''); return s; }
     function dashArray(art) { if (art === 'dashed') return '8 6'; if (art === 'dotted') return '1 7'; return null; }
 
     function normalisiere(inhalt) {
@@ -168,6 +172,16 @@
                 map.on('moveend zoomend', () => {
                     if (!map) return;
                     const c = map.getCenter();
+                    const a = state.ansicht;
+                    // Leaflet feuert moveend schon bei der Initialisierung (setView/invalidateSize)
+                    // und rundet dabei aufs Pixelraster. Bewegungen unter einem Kachel-Pixel sind
+                    // keine Nutzer-Aktion → Rundung nur übernehmen, nicht speichern (sonst
+                    // schreibt jedes bloße Laden den Block neu).
+                    const einPixel = 360 / Math.pow(2, map.getZoom() + 8);
+                    if (Math.abs(a.lat - c.lat) < einPixel && Math.abs(a.lng - c.lng) < einPixel && a.zoom === map.getZoom()) {
+                        state.ansicht = { lat: c.lat, lng: c.lng, zoom: map.getZoom() };
+                        return;
+                    }
                     state.ansicht = { lat: c.lat, lng: c.lng, zoom: map.getZoom() };
                     aenderung(JSON.parse(JSON.stringify(state)));
                 });
@@ -215,7 +229,7 @@
 
                 state.marker.forEach((m) => {
                     const mk = L.marker([m.lat, m.lng], { icon: pinIcon(L), draggable: true });
-                    if (m.titel) mk.bindTooltip(m.titel, { permanent: true, direction: 'top', className: 'w-karte-label' });
+                    if (m.titel) mk.bindTooltip(labelEl(m.titel), { permanent: true, direction: 'top', className: 'w-karte-label' });
                     mk.on('dragend', () => { const ll = mk.getLatLng(); m.lat = ll.lat; m.lng = ll.lng; speichern(); });
                     mk.bindPopup(() => markerPopup(L, m, mk));
                     mk.on('popupopen', popupFokus);
@@ -243,7 +257,7 @@
                     t.titel = feld.value.slice(0, 120);
                     speichern();
                     mk.unbindTooltip();
-                    if (t.titel) mk.bindTooltip(t.titel, { permanent: true, direction: 'top', className: 'w-karte-label' });
+                    if (t.titel) mk.bindTooltip(labelEl(t.titel), { permanent: true, direction: 'top', className: 'w-karte-label' });
                 });
                 const weg = document.createElement('button');
                 weg.type = 'button'; weg.className = 'w-sekundaer-btn'; weg.textContent = 'Löschen';
@@ -345,10 +359,14 @@
                 modusSetzen('linie');
             });
 
-            // Live-Übertragung: gezielter Poll, nur Overlays übernehmen (Ausschnitt bleibt).
-            const timer = setInterval(async () => {
-                if (!container.isConnected) { clearInterval(timer); aufraeumen(); return; }
+            // Live-Übertragung: nur bei fremder Änderung nachladen, nur Overlays übernehmen
+            // (Ausschnitt bleibt). Den Änderungs-Stempel liefert der zentrale Sync-Poll
+            // (window.pultSync) mit — kein eigener 4-Sekunden-Poll mehr.
+            let holtGerade = false;
+            async function fernAbgleichen(mtime) {
+                if (holtGerade || mtime === letztMtime) return;
                 if (document.hidden || modus === 'linie' || popupOffen || editId) return;
+                holtGerade = true;
                 try {
                     const r = await fetch('api.php?action=block_get&id=' + encodeURIComponent(ctx.id), { credentials: 'same-origin' });
                     const j = await r.json();
@@ -360,8 +378,23 @@
                         state.marker = neu.marker; state.striche = neu.striche;
                         if (window.L && map) rendere(window.L);
                     }
-                } catch (e) { /* nächster Tick */ }
-            }, 4000);
+                } catch (e) { /* nächste Runde */ }
+                finally { holtGerade = false; }
+            }
+            if (window.pultSync) {
+                // aufraeumen läuft als Abo-Hook, sobald der Container aus dem DOM fällt
+                // (Fläche geschlossen oder Board bei Fremd-Sync neu aufgebaut).
+                window.pultSync.abonnieren(container, (z) => {
+                    const mtime = (z && z.bloecke && typeof z.bloecke === 'object') ? (Number(z.bloecke[ctx.id]) || 0) : 0;
+                    fernAbgleichen(mtime);
+                }, aufraeumen);
+            } else {
+                // Rückfall ohne zentralen Sync (sollte nicht vorkommen — Dateien werden zusammen ausgeliefert)
+                const timer = setInterval(() => {
+                    if (!container.isConnected) { clearInterval(timer); aufraeumen(); return; }
+                    fernAbgleichen(-2);
+                }, 15000);
+            }
 
             function aufraeumen() {
                 if (ro) { try { ro.disconnect(); } catch (e) {} ro = null; }

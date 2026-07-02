@@ -2,10 +2,12 @@
    Funkfeld — Stilbasis "Dunkler Steuerstand"
    ========================================================= */
 
-/* Marken-/Überschriftenschrift: ProtestRevolution (kreidig, wie an der Tafel) */
+/* Marken-/Überschriftenschrift: ProtestRevolution (kreidig, wie an der Tafel).
+   WOFF2 zuerst (≈ ein Drittel der TTF-Größe), TTF als Rückfall für alte Browser. */
 @font-face {
     font-family: 'ProtestRevolution';
-    src: url('../fonts/ProtestRevolution-Regular.ttf') format('truetype');
+    src: url('../fonts/ProtestRevolution-Regular.woff2') format('woff2'),
+         url('../fonts/ProtestRevolution-Regular.ttf') format('truetype');
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -510,6 +512,10 @@ a.w-sekundaer-btn { text-decoration: none; display: inline-flex; align-items: ce
 /* Unsichtbarer Platzhalter, der die Scroll-Höhe des Boards bestimmt (Höhe via JS gesetzt). */
 .board-spacer { position: relative; width: 1px; pointer-events: none; }
 
+/* Im Gitter (Raster/Handy) übernimmt das Grid die Höhe — der Spacer würde dort
+   als Grid-Kind die erste Zelle belegen (leere erste Kachel). */
+.board.gestapelt .board-spacer { display: none; }
+
 .leerhinweis {
     position: absolute;
     inset: 0;
@@ -984,9 +990,13 @@ body.zieht { user-select: none; cursor: grabbing; }
 .w-ls-intervall { flex: 0 0 auto; }
 .w-ls-buehne { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; align-items: flex-start; justify-content: center; }
 .w-ls-bild { width: 100%; height: auto; display: block; border-radius: var(--radius-xs); }
+/* Wichtig: sonst überstimmt display:block das hidden-Attribut und ohne Adresse
+   bliebe ein kaputtes Bild-Symbol sichtbar (gleiche Falle wie beim Leer-Hinweis). */
+.w-ls-bild[hidden] { display: none; }
 .w-ls-status { margin: auto; text-align: center; }
 
 /* Wirtschaft: Liniendiagramm + Legende */
+.w-wi-teil { font-size: 0.72rem; color: var(--text-leise); }
 .w-wi-legende { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; flex: 0 0 auto; font-size: 0.8rem; color: var(--text-leise); }
 .w-wi-leg { display: inline-flex; align-items: center; gap: 0.3rem; }
 .w-wi-leg-punkt { width: 10px; height: 10px; border-radius: 2px; flex: 0 0 auto; }

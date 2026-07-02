@@ -73,13 +73,17 @@
             inp.setAttribute('aria-label', 'Dashboard umbenennen');
             h3.replaceWith(inp);
             inp.focus(); inp.select();
+            let beendet = false;
             const fertig = async (speichern) => {
+                if (beendet) return;               // nur einmal abschließen (Enter löst auch blur aus)
+                beendet = true;
                 const neu = inp.value.trim();
                 const neuH3 = document.createElement('h2');
                 neuH3.className = 'dash-name';
                 if (speichern && neu && neu !== alt) {
                     const r = await api('dash_rename', { id, name: neu });
                     neuH3.textContent = (r && r.ok) ? neu : alt;
+                    if (r && r.ok) ariaNamenAktualisieren(karte, neu);
                 } else {
                     neuH3.textContent = alt;
                 }
@@ -135,6 +139,16 @@
         } else {
             panel.appendChild(mkBtn('Freigabelink erstellen', async () => { await api('freigabe_create', { id }); shareRender(panel, id); }));
         }
+    }
+
+    /** Nach dem Umbenennen den Dashboard-Namen in allen aria-Labels der Karte nachziehen. */
+    function ariaNamenAktualisieren(karte, name) {
+        // Ersetzungs-FUNKTION (nicht -String): sonst würden $-Folgen im Namen wie $& oder $1
+        // von String.replace speziell interpretiert und ergäben ein falsches aria-Label.
+        karte.querySelectorAll('[aria-label*="„"]').forEach((el) => {
+            const alt = el.getAttribute('aria-label') || '';
+            el.setAttribute('aria-label', alt.replace(/„[^“]*“/, () => '„' + name + '“'));
+        });
     }
 
     function mkBtn(text, fn) {

@@ -42,6 +42,41 @@
     let letzteMtimes = null;
     let zeigerUnten = false;
     let syncTimer = null;
+    let syncTakt = 0;
+
+    /* ---------------------------------------------------------
+       Zentraler Sync-Poll als Verteiler: Widgets (Chat, Karte)
+       abonnieren die zustand-Antwort, statt eigene Poll-Timer zu
+       betreiben. Mit Abonnenten taktet der Poll schneller.
+       --------------------------------------------------------- */
+    const SYNC_TAKT_LANGSAM = 25000;
+    const SYNC_TAKT_SCHNELL = 5000;
+    const syncAbos = [];
+    window.pultSync = {
+        /** Widget meldet sich an: cb(zustand) läuft nach jeder erfolgreichen zustand-Abfrage.
+         *  container dient als Lebenszeichen — ist er nicht mehr im DOM, fliegt das Abo raus;
+         *  dabei läuft (falls angegeben) beendet() als Aufräum-Hook des Widgets. */
+        abonnieren(container, cb, beendet) {
+            syncAbos.push({ container, cb, beendet });
+            syncTaktPruefen();
+        }
+    };
+    function syncAbosBereinigen() {
+        for (let i = syncAbos.length - 1; i >= 0; i--) {
+            if (!syncAbos[i].container.isConnected) {
+                const abo = syncAbos.splice(i, 1)[0];
+                try { if (abo.beendet) abo.beendet(); } catch (e) { /* Aufräum-Fehler ignorieren */ }
+            }
+        }
+    }
+    /** Poll-Intervall an die Abonnenten anpassen (Chat/Karte offen → schneller Takt). */
+    function syncTaktPruefen() {
+        const takt = syncAbos.length ? SYNC_TAKT_SCHNELL : SYNC_TAKT_LANGSAM;
+        if (takt === syncTakt && syncTimer) return;
+        syncTakt = takt;
+        if (syncTimer) clearInterval(syncTimer);
+        syncTimer = setInterval(syncPoll, syncTakt);
+    }
 
     // Standard-Titel je Flächen-Typ
     const TYP_INFO = {
@@ -811,19 +846,38 @@
        Neue Fläche
        --------------------------------------------------------- */
 
+    /** Freie Stelle für eine neue Fläche in der Frei-Ansicht suchen (zeilenweise,
+     *  mit 10px Abstand zu Bestehendem) — statt alles fast deckungsgleich zu stapeln. */
+    function freieStelleFrei(b, h) {
+        const luft = 10;
+        const belegt = layout.flaechen.map((f) => ({ x: f.x, y: f.y, b: f.b, h: f.h }));
+        const passt = (px, py) => !belegt.some((o) =>
+            px < o.x + o.b + luft && px + b + luft > o.x && py < o.y + o.h + luft && py + h + luft > o.y);
+        const maxX = Math.max(20, board.clientWidth - b - 10);
+        for (let y = 20; y <= 4000; y += 40) {
+            for (let x = 20; x <= maxX; x += 40) {
+                if (passt(x, y)) return { x, y };
+            }
+        }
+        // Kein Platz im Suchfenster → unter die unterste Fläche setzen
+        let unten = 0;
+        for (const o of belegt) unten = Math.max(unten, o.y + o.h);
+        return { x: 20, y: unten + luft };
+    }
+
     function neueFlaeche(typ) {
         if (!TYP_INFO[typ]) return;                 // nur bekannte Typen
-        const versatz = (layout.flaechen.length % 8) * 28;
         const wunschB = TYP_INFO[typ].b || 280;
         const wunschH = TYP_INFO[typ].h || 200;
         const b = Math.min(wunschB, Math.max(120, board.clientWidth - 20));
         const h = Math.min(wunschH, Math.max(60, board.clientHeight - 20));
+        const stelle = freieStelleFrei(b, h);
         const f = {
             id: neueId(),
             typ: typ,
             titel: TYP_INFO[typ].titel,
-            x: Math.max(0, Math.min(60 + versatz, board.clientWidth  - b - 10)),
-            y: Math.max(0, Math.min(60 + versatz, board.clientHeight - h - 10)),
+            x: stelle.x,
+            y: stelle.y,
             b: b,
             h: h,
             z: layout.naechsteZ++,
@@ -937,6 +991,13 @@
         } catch (e) { return; }
         if (!z || !z.ok) return;
 
+        // Abonnierte Widgets (Chat, Karte) mit den frischen Änderungsstempeln versorgen
+        syncAbosBereinigen();
+        syncTaktPruefen();
+        for (const abo of syncAbos) {
+            try { abo.cb(z); } catch (e) { /* Widget-Fehler stoppen den Sync nicht */ }
+        }
+
         const mtimes = JSON.stringify({ l: z.layout, b: z.bloecke });
         if (letzteMtimes === null) { letzteMtimes = mtimes; return; }
         if (mtimes === letzteMtimes) return;                       // nichts geändert
@@ -1000,7 +1061,7 @@
             ansichtAnwenden();   // bei Fehler bleibt der Leerzustand stehen
         }
         mobilPruefen();
-        syncTimer = setInterval(syncPoll, 25000);   // Live-Sync starten
+        syncTaktPruefen();   // Live-Sync starten (Takt richtet sich nach den Abonnenten)
     }
 
     // Runder Hinzufügen-Knopf (FAB) — fächert das Flächen-Menü auf
