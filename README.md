@@ -1,9 +1,10 @@
 # Funkfeld
 
-Selbstgehostetes Dashboard fürs Web: frei anordbare Flächen (Notizen, Aufgaben,
-Kalender, Mail, Chat, eine gemeinsame Live-Karte, eigene Widgets …) auf einem
-dunklen Steuerstand — reines PHP, **ohne Datenbank**, ohne Build-Schritt, auf
-jedem einfachen Webspace. In Echtzeit teilbar.
+**Euer zentrales Organisations-Pult fürs Web.** Statt hundert einzelner Apps und
+Tabs eine Seite, die ihr euch selbst gestaltet: Notizen, Aufgaben, Kalender,
+Mail, eine gemeinsame Live-Karte, Chat und mehr auf frei anordbaren Flächen — in
+Echtzeit fürs ganze Team synchron. Die Cloud speichert eure Dateien; Funkfeld ist
+das Pult, an dem ihr sie organisiert. Selbst gehostet oder online.
 
 🔗 **Live:** [funkfeld.brosemedien.de](https://funkfeld.brosemedien.de/) · 📦 **Download:** [funkfeld.brosemedien.de/download](https://funkfeld.brosemedien.de/download)
 

@@ -1,7 +1,16 @@
 {
-    "version": "1.0.2",
+    "version": "1.1.0",
     "date": "2026-07-02",
     "changelog": [
+        {
+            "version": "1.1.0",
+            "date": "2026-07-02",
+            "changes": [
+                "Telefonbuch: Kontakte als vCard oder CSV exportieren und importieren.",
+                "Tabelle: als CSV exportieren und importieren.",
+                "Import mit Schutz gegen Formel-Einschleusung (CSV) und Größengrenze; Kontakte/Zeilen werden auf die gespeicherten Höchstwerte begrenzt."
+            ]
+        },
         {
             "version": "1.0.2",
             "date": "2026-07-02",

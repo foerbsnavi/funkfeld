@@ -4,6 +4,16 @@ Alle nennenswerten Änderungen an Funkfeld werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/),
 Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.1.0] – 2026-07-02
+
+### Neu
+- **Telefonbuch:** Kontakte als **vCard** (.vcf) oder **CSV** exportieren und aus vCard/CSV importieren.
+- **Tabelle:** als **CSV** exportieren und importieren.
+- Import bringt die Daten auf dieselben Höchstwerte wie der Server (500 Kontakte bzw. 200 Zeilen / 12 Spalten) und hat eine Größengrenze (5 MB).
+
+### Sicherheit
+- CSV-Export entschärft Zellen, die Tabellenkalkulationen als Formel deuten würden (Schutz vor Formel-Einschleusung).
+
 ## [1.0.2] – 2026-07-02
 
 ### Behoben

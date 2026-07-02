@@ -126,7 +126,53 @@
             });
             leiste.append(addZeile, addSpalte);
 
-            container.append(wrap, leiste);
+            // --- Import / Export (CSV) ---
+            const ioLeiste = document.createElement('div');
+            ioLeiste.className = 'w-io-leiste';
+            const mkIoBtn = (text, label, fn) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'w-mini';
+                b.textContent = text;
+                b.setAttribute('aria-label', label);
+                b.addEventListener('click', fn);
+                return b;
+            };
+            const MAX_ZEILEN = 200, MAX_SPALTEN = 12;   // gleiche Grenzen wie serverseitig (blocks.php)
+            const impBtn = mkIoBtn('Import CSV', 'Import CSV: Tabelle aus Datei laden', async () => {
+                if (!window.pultIO) return;
+                const datei = await window.pultIO.dateiWaehlen('.csv,text/csv');
+                if (!datei) { impBtn.focus(); return; }
+                const rows = window.pultIO.csvLesen(datei.text);
+                if (!rows.length) { if (window.pultAnsage) window.pultAnsage('Keine Daten in der Datei gefunden.'); impBtn.focus(); return; }
+                if (!(await window.pultConfirm('Importierte CSV ersetzt die aktuelle Tabelle. Fortfahren?'))) { impBtn.focus(); return; }
+                // Breite ohne Spread ermitteln (Spread würde bei sehr vielen Zeilen den Stack sprengen)
+                const rohBreite = rows.reduce((m, r) => Math.max(m, r.length), 0);
+                const breite = Math.min(MAX_SPALTEN, rohBreite);
+                spalten.length = 0;
+                (rows[0] || []).slice(0, breite).forEach((h, i) => spalten.push(String(h || ('Spalte ' + (i + 1)))));
+                while (spalten.length < breite) spalten.push('Spalte ' + (spalten.length + 1));
+                zeilen = rows.slice(1, 1 + MAX_ZEILEN).map((r) => {
+                    const z = r.slice(0, breite).map((c) => String(c));
+                    while (z.length < breite) z.push('');
+                    return z;
+                });
+                speichern(); zeichne();
+                if (window.pultAnsage) {
+                    const gekappt = (rows.length - 1) > MAX_ZEILEN || rohBreite > MAX_SPALTEN;
+                    window.pultAnsage('Tabelle importiert: ' + zeilen.length + ' Zeile(n)'
+                        + (gekappt ? ' (auf max. ' + MAX_ZEILEN + ' Zeilen / ' + MAX_SPALTEN + ' Spalten gekappt).' : '.'));
+                }
+                impBtn.focus();
+            });
+            const expBtn = mkIoBtn('Export CSV', 'Export CSV: Tabelle als Datei speichern', () => {
+                if (!window.pultIO) return;
+                const rows = [spalten.slice()].concat(zeilen.map((z) => z.slice()));
+                window.pultIO.download('tabelle.csv', window.pultIO.csvErzeugen(rows), 'text/csv');
+            });
+            ioLeiste.append(impBtn, expBtn);
+
+            container.append(wrap, leiste, ioLeiste);
         }
     };
 })();

@@ -6,7 +6,7 @@ if (!defined('PULT_ROOT')) {
 }
 // Alle ausgelieferten Skripte (Reihenfolge = Ladereihenfolge).
 $pult_js = [
-    'assets/js/confirm.js', 'assets/js/einstellungen.js',
+    'assets/js/confirm.js', 'assets/js/io.js', 'assets/js/einstellungen.js',
     'assets/js/widgets/notiz.js', 'assets/js/widgets/checkliste.js', 'assets/js/widgets/links.js',
     'assets/js/widgets/tabelle.js', 'assets/js/widgets/telefonbuch.js', 'assets/js/widgets/dateien.js',
     'assets/js/widgets/uhr.js', 'assets/js/widgets/wetter.js', 'assets/js/widgets/kalender.js',

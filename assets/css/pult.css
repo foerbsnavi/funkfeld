@@ -786,6 +786,16 @@ body.zieht { user-select: none; cursor: grabbing; }
 .w-tab-leiste { display: flex; gap: 0.4rem; margin-top: 0.5rem; }
 .w-tab-leiste .w-add { margin-top: 0; }
 
+/* Import/Export-Leiste (Telefonbuch, Tabelle): kleine Zweitzeile unter den +-Knöpfen */
+.w-io-leiste {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid var(--linie);
+}
+
 /* Telefonbuch */
 .w-tel-liste { display: flex; flex-direction: column; gap: 0.5rem; }
 .w-tel-karte {

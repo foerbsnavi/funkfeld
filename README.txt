@@ -1,10 +1,11 @@
 FUNKFELD
 ========
 
-Selbstgehostetes Dashboard fürs Web: frei anordbare Flächen — Notizen,
-Aufgaben, Links, Tabelle, Telefonbuch, Dateien, Uhr, Wetter, Kalender, Mail,
-RSS, Chat, Live-Karte, Livestream, Wirtschaft und eine Custom-Fläche
-(eigenes HTML/JS in einer Sandbox). Ohne Datenbank, in Echtzeit teilbar.
+Euer zentrales Organisations-Pult fürs Web: statt hundert einzelner Apps eine
+Seite, die ihr euch selbst gestaltet — Notizen, Aufgaben, Links, Tabelle,
+Telefonbuch, Dateien, Uhr, Wetter, Kalender, Mail, RSS, Chat, Live-Karte,
+Livestream, Wirtschaft und eine Custom-Fläche (eigenes HTML/JS in einer
+Sandbox). In Echtzeit fürs ganze Team synchron.
 
 https://funkfeld.brosemedien.de
 
