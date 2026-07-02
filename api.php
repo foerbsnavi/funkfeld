@@ -773,7 +773,7 @@ switch ($action) {
             return [
                 'id'   => (string) ($k['id'] ?? ''),
                 'name' => (string) ($k['name'] ?? ''),
-                'url'  => (string) ($k['url'] ?? ''),
+                'url'  => pult_klartext((string) ($k['url'] ?? '')),   // für die Anzeige im Bearbeiten-Popup entschlüsseln
             ];
         }, pult_kalender());
         pult_json_ok(['einstellungen' => [
@@ -800,7 +800,9 @@ switch ($action) {
         }
         $e = &$cfg['einstellungen'];
         if (isset($body['owm_key']) && (string) $body['owm_key'] !== '') {
-            $e['owm_key'] = pult_kurz((string) $body['owm_key'], 100);
+            $e['owm_key'] = pult_geheim(pult_kurz((string) $body['owm_key'], 100));
+        } elseif (isset($e['owm_key']) && (string) $e['owm_key'] !== '' && !pult_ist_geheim((string) $e['owm_key'])) {
+            $e['owm_key'] = pult_geheim((string) $e['owm_key']);   // Altbestand (Klartext) migrieren
         }
         if (isset($body['kalender']) && is_array($body['kalender'])) {
             // bestehende IDs merken (damit die Block-Auswahl der Flächen erhalten bleibt)
@@ -829,7 +831,7 @@ switch ($action) {
                 $neu[] = [
                     'id'   => $id,
                     'name' => $name !== '' ? $name : 'Kalender',
-                    'url'  => $url,
+                    'url'  => pult_geheim($url),   // Kalender-Adresse verschlüsselt ablegen (Token im Pfad)
                 ];
             }
             $e['kalender'] = $neu;
@@ -911,7 +913,7 @@ switch ($action) {
         if ($ort === '' || mb_strlen($ort) > 120) {
             pult_json_fehler('Ort fehlt');
         }
-        $key = (string) (pult_config()['einstellungen']['owm_key'] ?? '');
+        $key = pult_klartext((string) (pult_config()['einstellungen']['owm_key'] ?? ''));
         if ($key === '') {
             http_response_code(400);
             echo json_encode(['ok' => false, 'fehler' => 'API-Schlüssel fehlt', 'brauchtSchluessel' => true]);
@@ -1107,13 +1109,13 @@ switch ($action) {
         $liste = pult_kalender();
         foreach ($liste as $k) {
             if ((string) ($k['id'] ?? '') === $kid && $kid !== '') {
-                $url = trim((string) ($k['url'] ?? ''));
+                $url = trim(pult_klartext((string) ($k['url'] ?? '')));   // Adresse entschlüsseln
                 break;
             }
         }
         // Fallback: ohne (oder mit unbekannter) ID den ersten Kalender nehmen
         if ($url === '' && $liste) {
-            $url = trim((string) ($liste[0]['url'] ?? ''));
+            $url = trim(pult_klartext((string) ($liste[0]['url'] ?? '')));
         }
         if ($url === '') {
             pult_json_fehler('Kein Kalender in den Einstellungen hinterlegt');

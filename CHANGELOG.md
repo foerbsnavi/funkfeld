@@ -4,6 +4,12 @@ Alle nennenswerten Änderungen an Funkfeld werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/),
 Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.2.1] – 2026-07-02
+
+### Sicherheit
+- **Zugangsdaten verschlüsselt gespeichert:** Wetter-API-Schlüssel und Kalender-Adressen (die oft ein Geheim-Token im Pfad enthalten) liegen nicht mehr im Klartext in der `config.json`, sondern AES-256-verschlüsselt — wie schon das Mail-Passwort. Schützt gegen versehentliche Datei-Lecks.
+- Bestehende Zugänge werden beim nächsten Speichern der Einstellungen automatisch verschlüsselt. Inhalte (Notizen, Kontakte, Chat) bleiben unverschlüsselt.
+
 ## [1.2.0] – 2026-07-02
 
 ### Neu

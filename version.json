@@ -1,7 +1,15 @@
 {
-    "version": "1.2.0",
+    "version": "1.2.1",
     "date": "2026-07-02",
     "changelog": [
+        {
+            "version": "1.2.1",
+            "date": "2026-07-02",
+            "changes": [
+                "Zugangsdaten (Wetter-API-Schlüssel und Kalender-Adressen) werden jetzt verschlüsselt gespeichert — wie schon das Mail-Passwort.",
+                "Bestehende Zugänge werden beim nächsten Speichern der Einstellungen automatisch verschlüsselt."
+            ]
+        },
         {
             "version": "1.2.0",
             "date": "2026-07-02",

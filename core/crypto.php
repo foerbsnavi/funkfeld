@@ -63,3 +63,49 @@ function pult_decrypt(string $code): string
     $plain  = openssl_decrypt($cipher, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag);
     return $plain === false ? '' : $plain;
 }
+
+/* ---------------------------------------------------------------------------
+   Zugangsdaten „at rest" verschlüsseln (Token, Kalender-URL, DAV-Logins …).
+   Gespeichert wird ein selbstbeschreibender Wert mit Präfix ENC1:, damit
+   Klartext-Altbestand weiter lesbar ist (Migration beim nächsten Speichern).
+   Nur für sensible Zugänge gedacht — nicht für Inhalte (Chat/Notizen/Kontakte).
+   --------------------------------------------------------------------------- */
+
+const PULT_ENC_PRAEFIX = 'ENC1:';
+
+/** Ist ein gespeicherter Wert bereits verschlüsselt? */
+function pult_ist_geheim(string $wert): bool
+{
+    return strncmp($wert, PULT_ENC_PRAEFIX, strlen(PULT_ENC_PRAEFIX)) === 0;
+}
+
+/**
+ * Bereitet einen Zugangsdaten-Wert zum Speichern auf: verschlüsselt ihn
+ * (Präfix ENC1:). Leerer Wert bleibt leer. Steht keine Verschlüsselung zur
+ * Verfügung, wird der Klartext gespeichert (Funktion vor Schutz — kein
+ * Datenverlust; auf Standard-PHP ist openssl praktisch immer vorhanden).
+ * Ein bereits verschlüsselter Wert wird nicht doppelt verschlüsselt.
+ */
+function pult_geheim(string $klar): string
+{
+    if ($klar === '' || pult_ist_geheim($klar)) {
+        return $klar;
+    }
+    if (!pult_crypto_verfuegbar()) {
+        return $klar;
+    }
+    $code = pult_encrypt($klar);
+    return $code !== '' ? (PULT_ENC_PRAEFIX . $code) : $klar;
+}
+
+/** Liest einen gespeicherten Zugangsdaten-Wert im Klartext (entschlüsselt bei Präfix). */
+function pult_klartext(string $wert): string
+{
+    if ($wert === '') {
+        return '';
+    }
+    if (!pult_ist_geheim($wert)) {
+        return $wert;   // Altbestand: noch Klartext
+    }
+    return pult_decrypt(substr($wert, strlen(PULT_ENC_PRAEFIX)));
+}
