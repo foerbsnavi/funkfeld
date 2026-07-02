@@ -125,6 +125,8 @@ body {
 .pe-titel { margin: 0 0 0.25rem; font-size: 1.15rem; color: var(--akzent); }
 .pe-gruppe { margin-top: 0.5rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-leise); border-bottom: 1px solid var(--linie); padding-bottom: 0.2rem; }
 .pe-label { display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.8rem; color: var(--text-leise); }
+/* kleine Zwischenüberschrift innerhalb eines Konto-Blocks (z. B. „Versand (SMTP)") */
+.pe-unterzeile { margin-top: 0.35rem; font-size: 0.72rem; color: var(--text-leise); }
 .pe-feld { width: 100%; }
 .pe-fehler { margin: 0.25rem 0 0; color: var(--fehler); font-size: 0.85rem; }
 .pe-konten { display: flex; flex-direction: column; gap: 0.6rem; }
@@ -1076,6 +1078,10 @@ body.zieht { user-select: none; cursor: grabbing; }
 /* Nachricht lesen */
 .w-mail-meta { flex: 0 0 auto; color: var(--text-leise); font-size: 0.8rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--linie); }
 .w-mail-text { flex: 1 1 auto; min-height: 0; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 0.85rem; line-height: 1.4; color: var(--text); }
+
+/* Nachricht schreiben */
+.w-mail-form { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 0.4rem; overflow: auto; }
+.w-mail-textarea { flex: 1 1 auto; min-height: 4rem; resize: vertical; font: inherit; line-height: 1.4; }
 
 /* Datei-Zwischenlager */
 .w-datei-liste { display: flex; flex-direction: column; gap: 0.3rem; }

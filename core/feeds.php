@@ -256,3 +256,32 @@ function pult_cache_set(string $key, $daten): void
     }
     store_write(pult_cache_pfad($key), ['zeit' => time(), 'daten' => $daten]);
 }
+
+/**
+ * Einfache dateibasierte Ratenbremse (gleitendes Fenster). Zählt jedes erlaubte
+ * Ereignis mit; gibt true zurück, solange in den letzten $fenster Sekunden weniger
+ * als $max Ereignisse lagen (und zählt dann hoch), sonst false.
+ */
+function pult_ratelimit(string $key, int $max, int $fenster): bool
+{
+    $dir = PULT_DATA . '/cache';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+        @file_put_contents($dir . '/.htaccess', PULT_HTACCESS_DENY);
+    }
+    $key  = preg_replace('/[^a-z0-9_]/', '_', strtolower($key));
+    $pfad = $dir . '/rl_' . $key . '.json';
+    $now  = time();
+    $d    = store_read($pfad, []);
+    $stempel = is_array($d['t'] ?? null) ? $d['t'] : [];
+    // nur Ereignisse innerhalb des Fensters behalten
+    $stempel = array_values(array_filter($stempel, function ($t) use ($now, $fenster) {
+        return ($now - (int) $t) < $fenster;
+    }));
+    if (count($stempel) >= $max) {
+        return false;
+    }
+    $stempel[] = $now;
+    store_write($pfad, ['t' => $stempel]);
+    return true;
+}

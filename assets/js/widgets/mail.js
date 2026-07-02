@@ -27,6 +27,7 @@
             let konten = [];
             let kontoId = String((inhalt && inhalt.konto) || '');
             let zielUid = null;
+            let nachListeFokus = false;   // nach „Zurück"/„Senden" den Fokus in der Liste setzen
 
             function kontoName(id) {
                 const k = konten.find((x) => x.id === id);
@@ -35,6 +36,7 @@
 
             function leeren() { wrap.textContent = ''; }
             function status(t, mitEinstellungen) {
+                nachListeFokus = false;   // Fehler-/Statuspfad: kein späterer Fokus-Klau
                 leeren();
                 const p = document.createElement('p');
                 p.className = 'w-status';
@@ -50,6 +52,9 @@
                 }
                 if (window.pultAnsage) window.pultAnsage(t);
             }
+
+            function kontoDaten(id) { return konten.find((x) => x.id === id) || null; }
+            function kannSenden(id) { const k = kontoDaten(id); return !!(k && k.smtp_host); }
 
             function kopfListe() {
                 const kopf = document.createElement('div');
@@ -77,6 +82,16 @@
                     t.textContent = kontoName(kontoId) || 'Posteingang';
                     kopf.appendChild(t);
                 }
+                // „Schreiben" nur, wenn für das Konto SMTP-Versand eingerichtet ist
+                if (kannSenden(kontoId)) {
+                    const schreiben = document.createElement('button');
+                    schreiben.type = 'button';
+                    schreiben.className = 'w-mini';
+                    schreiben.textContent = '✎ Schreiben';
+                    schreiben.setAttribute('aria-label', 'Neue Nachricht schreiben');
+                    schreiben.addEventListener('click', () => zeigeFormular());
+                    kopf.appendChild(schreiben);
+                }
                 const neu = document.createElement('button');
                 neu.type = 'button';
                 neu.className = 'w-mini';
@@ -85,6 +100,83 @@
                 neu.addEventListener('click', ladeListe);
                 kopf.appendChild(neu);
                 return kopf;
+            }
+
+            // Absender aus einem „Von"-Kopf herauslösen (für „Antworten")
+            function adresseAus(text) {
+                const m = String(text || '').match(/[^\s<>()[\],;:@"]+@[^\s<>()[\],;:@"]+/);
+                return m ? m[0] : '';
+            }
+
+            function zeigeFormular(vor) {
+                vor = vor || {};
+                leeren();
+                wrap.appendChild(kopfNachricht('Neue Nachricht', () => { nachListeFokus = true; ladeListe(); }));
+                const form = document.createElement('div');
+                form.className = 'w-mail-form';
+                form.setAttribute('role', 'group');
+                form.setAttribute('aria-label', 'Neue Nachricht');
+
+                const anZeile = document.createElement('input');
+                anZeile.type = 'email';
+                anZeile.className = 'w-eingabe';
+                anZeile.placeholder = 'An (E-Mail-Adresse)';
+                anZeile.setAttribute('aria-label', 'Empfänger');
+                anZeile.required = true;
+                anZeile.value = vor.an || '';
+
+                const betreffZeile = document.createElement('input');
+                betreffZeile.type = 'text';
+                betreffZeile.className = 'w-eingabe';
+                betreffZeile.placeholder = 'Betreff';
+                betreffZeile.setAttribute('aria-label', 'Betreff');
+                betreffZeile.maxLength = 250;
+                betreffZeile.value = vor.betreff || '';
+
+                const textFeld = document.createElement('textarea');
+                textFeld.className = 'w-eingabe w-mail-textarea';
+                textFeld.placeholder = 'Nachricht…';
+                textFeld.setAttribute('aria-label', 'Nachrichtentext');
+                textFeld.rows = 8;
+
+                const status = document.createElement('p');
+                status.className = 'w-status';
+                status.setAttribute('aria-live', 'polite');
+
+                const senden = document.createElement('button');
+                senden.type = 'button';
+                senden.className = 'w-sekundaer-btn';
+                senden.textContent = 'Senden';
+                senden.addEventListener('click', async () => {
+                    const an = anZeile.value.trim();
+                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(an)) { status.textContent = 'Bitte eine gültige Empfängeradresse eingeben.'; anZeile.focus(); return; }
+                    senden.disabled = true;
+                    status.textContent = 'Wird gesendet…';
+                    try {
+                        const r = await fetch('api.php?action=mail_senden', {
+                            method: 'POST', credentials: 'same-origin',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ csrf: document.body.dataset.csrf || '', konto: kontoId,
+                                an: an, betreff: betreffZeile.value.trim(), text: textFeld.value })
+                        });
+                        const j = await r.json();
+                        if (j.ok) {
+                            if (window.pultAnsage) window.pultAnsage('Nachricht gesendet.');
+                            nachListeFokus = true;
+                            ladeListe();
+                        } else {
+                            senden.disabled = false;
+                            status.textContent = j.fehler || 'Senden fehlgeschlagen.';
+                        }
+                    } catch (e) {
+                        senden.disabled = false;
+                        status.textContent = 'Server nicht erreichbar.';
+                    }
+                });
+
+                form.append(anZeile, betreffZeile, textFeld, senden, status);
+                wrap.appendChild(form);
+                anZeile.focus();
             }
 
             function kopfNachricht(titelText, zurueck) {
@@ -125,6 +217,7 @@
                     p.className = 'w-status';
                     p.textContent = 'Keine Nachrichten.';
                     wrap.appendChild(p);
+                    if (nachListeFokus) { wrap.querySelector('.w-feedkopf button')?.focus(); nachListeFokus = false; }
                     return;
                 }
                 const liste = document.createElement('div');
@@ -157,6 +250,11 @@
                     const ziel = liste.querySelector('[data-uid="' + zielUid + '"]') || liste.querySelector('.w-mail-eintrag');
                     if (ziel) ziel.focus();
                     zielUid = null;
+                } else if (nachListeFokus) {
+                    // nach „Zurück" aus dem Formular / erfolgreichem Senden: Fokus nicht an <body> verlieren
+                    const ziel = wrap.querySelector('.w-feedkopf button') || liste.querySelector('.w-mail-eintrag');
+                    if (ziel) ziel.focus();
+                    nachListeFokus = false;
                 }
             }
 
@@ -185,6 +283,20 @@
                 body.className = 'w-mail-text';
                 body.textContent = text;
                 wrap.append(meta, body);
+                // „Antworten" nur, wenn Versand eingerichtet ist und eine Absenderadresse erkannt wurde
+                const antwortAn = adresseAus(n.von);
+                if (kannSenden(kontoId) && antwortAn) {
+                    const antworten = document.createElement('button');
+                    antworten.type = 'button';
+                    antworten.className = 'w-sekundaer-btn';
+                    antworten.textContent = '↩ Antworten';
+                    antworten.setAttribute('aria-label', 'Auf diese Nachricht antworten');
+                    antworten.addEventListener('click', () => {
+                        const bet = String(n.betreff || '');
+                        zeigeFormular({ an: antwortAn, betreff: /^re:/i.test(bet) ? bet : ('Re: ' + bet) });
+                    });
+                    wrap.appendChild(antworten);
+                }
                 wrap.querySelector('.w-mini')?.focus();
             }
 

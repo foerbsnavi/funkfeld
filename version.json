@@ -1,7 +1,16 @@
 {
-    "version": "1.1.0",
+    "version": "1.2.0",
     "date": "2026-07-02",
     "changelog": [
+        {
+            "version": "1.2.0",
+            "date": "2026-07-02",
+            "changes": [
+                "Mail: Nachrichten schreiben und beantworten — direkt aus der Mail-Fläche versenden (SMTP).",
+                "Pro Postfach lassen sich SMTP-Server, Verschlüsselung (SSL/STARTTLS) und Absenderadresse hinterlegen; das Passwort ist dasselbe wie fürs Lesen.",
+                "Versand nur aus eigenen Dashboards, fester Absender, Ratenbegrenzung — kein Missbrauch als Spam-Relay."
+            ]
+        },
         {
             "version": "1.1.0",
             "date": "2026-07-02",

@@ -756,12 +756,17 @@ switch ($action) {
         $e = pult_config()['einstellungen'] ?? [];
         $konten = array_map(function ($k) {
             return [
-                'id'         => (string) ($k['id'] ?? ''),
-                'name'       => (string) ($k['name'] ?? ''),
-                'host'       => (string) ($k['host'] ?? ''),
-                'port'       => (int) ($k['port'] ?? 993),
-                'user'       => (string) ($k['user'] ?? ''),
-                'pw_gesetzt' => ((string) ($k['pw_enc'] ?? '')) !== '',
+                'id'          => (string) ($k['id'] ?? ''),
+                'name'        => (string) ($k['name'] ?? ''),
+                'host'        => (string) ($k['host'] ?? ''),
+                'port'        => (int) ($k['port'] ?? 993),
+                'user'        => (string) ($k['user'] ?? ''),
+                'pw_gesetzt'  => ((string) ($k['pw_enc'] ?? '')) !== '',
+                // SMTP-Versand (keine Geheimnisse — Passwort ist dasselbe wie IMAP)
+                'smtp_host'   => (string) ($k['smtp_host'] ?? ''),
+                'smtp_port'   => (int) ($k['smtp_port'] ?? 465),
+                'smtp_secure' => (string) ($k['smtp_secure'] ?? 'ssl'),
+                'absender'    => (string) ($k['absender'] ?? ''),
             ];
         }, pult_mailkonten());
         $kalender = array_map(function ($k) {
@@ -860,6 +865,12 @@ switch ($action) {
                     'host' => $host,
                     'port' => max(1, min(65535, (int) ($k['port'] ?? 993))),
                     'user' => $user,
+                    // SMTP-Versand (optional): Host + Port 465/587 + Verschlüsselung + Absenderadresse.
+                    // Passwort = dasselbe wie IMAP (pw_enc), kein zweites Geheimnis.
+                    'smtp_host'   => pult_kurz((string) ($k['smtp_host'] ?? ''), 255),
+                    'smtp_port'   => in_array((int) ($k['smtp_port'] ?? 465), [465, 587], true) ? (int) $k['smtp_port'] : 465,
+                    'smtp_secure' => (((string) ($k['smtp_secure'] ?? 'ssl')) === 'starttls') ? 'starttls' : 'ssl',
+                    'absender'    => pult_kurz((string) ($k['absender'] ?? ''), 255),
                 ];
                 $pwNeu = (string) ($k['passwort'] ?? '');
                 if ($pwNeu !== '') {
@@ -1202,6 +1213,53 @@ switch ($action) {
         @imap_close($imap);
         @imap_errors();
         pult_json_ok(['text' => $text]);
+        break;
+
+    // Mail senden (SMTP) — genau ein Empfänger, nur Text. Absender fest aus dem Konto.
+    case 'mail_senden':
+        require_login_api();
+        if ($method !== 'POST') {
+            pult_json_fehler('nur POST', 405);
+        }
+        $body = pult_body();
+        if ($body === null || !csrf_valid($body['csrf'] ?? null)) {
+            pult_json_fehler('CSRF', 403);
+        }
+        // Nur im EIGENEN Dashboard senden — beigetretene Kollaboratoren dürfen nicht
+        // über die SMTP-Zugangsdaten des Eigentümers Mails im dessen Namen verschicken.
+        if (defined('PULT_PLATFORM') && PULT_PLATFORM
+            && defined('PULT_DASH_OWNER') && PULT_DASH_OWNER !== pult_dash_eigner()) {
+            pult_json_fehler('Senden ist nur in eigenen Dashboards möglich.', 403);
+        }
+        $kontoId = (string) ($body['konto'] ?? '');
+        $an      = trim((string) ($body['an'] ?? ''));
+        $betreff = trim((string) ($body['betreff'] ?? ''));
+        $text    = (string) ($body['text'] ?? '');
+        if (!filter_var($an, FILTER_VALIDATE_EMAIL)) {
+            pult_json_fehler('Empfängeradresse ungültig');
+        }
+        if (trim($text) === '' && $betreff === '') {
+            pult_json_fehler('Leere Nachricht');
+        }
+        $konto = null;
+        foreach (pult_mailkonten() as $k) {
+            if ((string) ($k['id'] ?? '') === $kontoId) { $konto = $k; break; }
+        }
+        if ($konto === null) {
+            pult_json_fehler('Konto nicht gefunden', 404);
+        }
+        if ((string) ($konto['smtp_host'] ?? '') === '') {
+            pult_json_fehler('Für dieses Konto ist kein SMTP-Versand eingerichtet.');
+        }
+        // Einfache Missbrauchsbremse: max. 30 gesendete Mails pro Stunde je Instanz
+        if (!pult_ratelimit('mail_senden', 30, 3600)) {
+            pult_json_fehler('Zu viele gesendete Mails — bitte später erneut versuchen.', 429);
+        }
+        $fehler = pult_smtp_senden($konto, $an, $betreff, $text);
+        if ($fehler !== '') {
+            pult_json_fehler($fehler, 502);
+        }
+        pult_json_ok();
         break;
 
     // Chat: letzte Nachrichten lesen

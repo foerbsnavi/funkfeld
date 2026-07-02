@@ -212,6 +212,26 @@
             const user = feld('Benutzer / E-Mail', 'text', k.user || '', '');
             const port = feld('Port', 'number', String(k.port || 993), '993');
             const pw = feld('Passwort', 'password', '', k.pw_gesetzt ? '•••••• hinterlegt' : 'Passwort');
+
+            // --- Versand (SMTP, optional) ---
+            const smtpTrenner = document.createElement('div');
+            smtpTrenner.className = 'pe-unterzeile';
+            smtpTrenner.textContent = 'Versand (SMTP, optional — zum Schreiben)';
+            const smtpHost = feld('SMTP-Server', 'text', k.smtp_host || '', 'smtp.beispiel.de');
+            const absender = feld('Absender-Adresse', 'email', k.absender || '', 'wie Benutzer, wenn leer');
+            const secLabel = document.createElement('label');
+            secLabel.className = 'pe-label';
+            secLabel.textContent = 'Verschlüsselung';
+            const smtpSecure = document.createElement('select');
+            smtpSecure.className = 'pe-feld w-eingabe';
+            [['ssl', 'SSL (Port 465)'], ['starttls', 'STARTTLS (Port 587)']].forEach((o) => {
+                const opt = document.createElement('option');
+                opt.value = o[0]; opt.textContent = o[1];
+                if ((k.smtp_secure || 'ssl') === o[0]) opt.selected = true;
+                smtpSecure.appendChild(opt);
+            });
+            secLabel.appendChild(smtpSecure);
+
             const weg = document.createElement('button');
             weg.type = 'button';
             weg.className = 'w-sekundaer-btn pe-konto-weg';
@@ -232,7 +252,11 @@
                     host: host.input.value.trim(),
                     user: user.input.value.trim(),
                     port: Number(port.input.value) || 993,
-                    passwort: pw.input.value
+                    passwort: pw.input.value,
+                    smtp_host: smtpHost.input.value.trim(),
+                    smtp_secure: smtpSecure.value,
+                    smtp_port: smtpSecure.value === 'starttls' ? 587 : 465,   // Port folgt der Verschlüsselung
+                    absender: absender.input.value.trim()
                 })
             };
             weg.addEventListener('click', () => {
@@ -240,7 +264,8 @@
                 const i = kontoRows.indexOf(eintrag);
                 if (i >= 0) kontoRows.splice(i, 1);
             });
-            kbox.append(name.label, host.label, user.label, port.label, pw.label, weg);
+            kbox.append(name.label, host.label, user.label, port.label, pw.label,
+                smtpTrenner, smtpHost.label, secLabel, absender.label, weg);
             return eintrag;
         }
         function addKonto(k) {
@@ -318,7 +343,7 @@
         box.append(titel,
             gruppe('Wetter'), owm.label,
             gruppe('Kalender'), kalWrap, addKalBtn,
-            gruppe('Mail (nur Lesen)'), kontenWrap, addBtn,
+            gruppe('Mail'), kontenWrap, addBtn,
             gruppe('Chat-Namen'), namenWrap, addNameBtn);
         if (fg && fg.verfuegbar) {
             box.append(gruppe('Dashboard teilen'), freigabeWrap);

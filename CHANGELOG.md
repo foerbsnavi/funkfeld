@@ -4,6 +4,16 @@ Alle nennenswerten Änderungen an Funkfeld werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/),
 Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.2.0] – 2026-07-02
+
+### Neu
+- **Mail schreiben:** Nachrichten direkt aus der Mail-Fläche verfassen, senden und beantworten (SMTP).
+- Pro Postfach konfigurierbar: SMTP-Server, Verschlüsselung (SSL Port 465 / STARTTLS Port 587) und Absenderadresse. Das Passwort ist dasselbe wie fürs Lesen (verschlüsselt gespeichert).
+
+### Sicherheit
+- Eigener, schlanker SMTP-Client (kein Fremd-Paket): TLS mit Zertifikatsprüfung, Verbindung nur zu geprüften öffentlichen Servern (SSRF-/DNS-Rebinding-Schutz), Schutz vor Kopfzeilen-Einschleusung.
+- Fester Absender aus dem Konto (kein Spoofing), genau ein Empfänger, Ratenbegrenzung. Versand nur in eigenen Dashboards — beigetretene Mitglieder senden nicht über fremde Konten.
+
 ## [1.1.0] – 2026-07-02
 
 ### Neu
