@@ -1,7 +1,14 @@
 {
-    "version": "1.5.0",
+    "version": "1.5.1",
     "date": "2026-07-16",
     "changelog": [
+        {
+            "version": "1.5.1",
+            "date": "2026-07-16",
+            "changes": [
+                "Reparatur für Updates von 1.4.0: Die neuen PWA-Dateien (sw.js, manifest.webmanifest, offline.html) kamen beim Selbst-Update mit dem alten Updater nicht an — sie reisen jetzt zusätzlich unter assets/pwa/ mit, und die App kopiert sie beim ersten Aufruf selbst an ihren Platz."
+            ]
+        },
         {
             "version": "1.5.0",
             "date": "2026-07-16",

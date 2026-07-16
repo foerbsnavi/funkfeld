@@ -4,6 +4,11 @@ Alle nennenswerten Änderungen an Funkfeld werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/),
 Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.5.1] – 2026-07-16
+
+### Behoben
+- **Update-Pfad von 1.4.0:** Beim Selbst-Update lief noch der alte Updater, dessen Kopierliste die neuen PWA-Wurzeldateien (`sw.js`, `manifest.webmanifest`, `offline.html`) nicht kannte — Bestandsinstallationen bekamen eine PWA-lose 1.5.0 (404 bei der Service-Worker-Registrierung). Die drei Dateien reisen jetzt zusätzlich als kanonische Kopien unter `assets/pwa/` mit (kommt auch durch alte Updater), und `index.php` kopiert sie beim ersten Aufruf selbst ins Wurzelverzeichnis. Gefunden im Live-Update-Test 1.4.0 → 1.5.0.
+
 ## [1.5.0] – 2026-07-16
 
 ### Neu
