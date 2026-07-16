@@ -24,10 +24,90 @@
                     notiz:   String((i && i.notiz) || '')
                 })) : [];
 
+            let buchId = String((inhalt && inhalt.buch) || '');
+
             const liste = document.createElement('div');
             liste.className = 'w-tel-liste';
 
-            const speichern = () => aenderung({ items: items.slice() });
+            const speichern = () => aenderung({ items: items.slice(), buch: buchId });
+
+            // --- Externes Adressbuch (CardDAV, nur Lesen) — Abschnitt über den lokalen Kontakten ---
+            const extern = document.createElement('div');
+            extern.className = 'w-tel-extern';
+            async function externAufbauen() {
+                const daten = await (window.pultEinstellung ? window.pultEinstellung() : Promise.resolve({}));
+                const buecher = Array.isArray(daten.telefonbuecher) ? daten.telefonbuecher : [];
+                if (!buecher.length) {
+                    if (buchId !== '') { buchId = ''; speichern(); }
+                    return;   // keine Adressbücher angelegt → Abschnitt bleibt leer
+                }
+                const kopf = document.createElement('div');
+                kopf.className = 'w-feedkopf';
+                const sel = document.createElement('select');
+                sel.className = 'w-eingabe';
+                sel.setAttribute('aria-label', 'Externes Adressbuch wählen');
+                const keins = document.createElement('option');
+                keins.value = '';
+                keins.textContent = 'Kein externes Adressbuch';
+                sel.appendChild(keins);
+                buecher.forEach((b) => {
+                    const o = document.createElement('option');
+                    o.value = b.id;
+                    o.textContent = 'Aus „' + (b.name || 'Adressbuch') + '"';
+                    if (b.id === buchId) o.selected = true;
+                    sel.appendChild(o);
+                });
+                sel.addEventListener('change', () => {
+                    buchId = sel.value;
+                    speichern();
+                    externLaden();
+                });
+                kopf.appendChild(sel);
+                extern.appendChild(kopf);
+                const inhaltBox = document.createElement('div');
+                inhaltBox.className = 'w-tel-extern-liste';
+                extern.appendChild(inhaltBox);
+                externLaden();
+            }
+            async function externLaden() {
+                const box = extern.querySelector('.w-tel-extern-liste');
+                if (!box) return;
+                box.textContent = '';
+                if (!buchId) return;
+                window.pultStatus(box, 'Lädt Adressbuch …');
+                try {
+                    const res = await fetch('api.php?action=carddav_liste&buch=' + encodeURIComponent(buchId),
+                        { credentials: 'same-origin' });
+                    const data = await res.json();
+                    if (!data || !data.ok) throw new Error(data && data.fehler ? data.fehler : 'unbekannt');
+                    box.textContent = '';
+                    const kontakte = Array.isArray(data.kontakte) ? data.kontakte : [];
+                    if (!kontakte.length) {
+                        window.pultStatus(box, 'Das Adressbuch ist leer.');
+                        return;
+                    }
+                    kontakte.forEach((k) => {
+                        const zeile = document.createElement('div');
+                        zeile.className = 'w-tel-extern-kontakt';
+                        const n = document.createElement('span');
+                        n.className = 'w-tel-extern-name';
+                        n.textContent = k.name || '(ohne Name)';
+                        zeile.appendChild(n);
+                        const rest = [k.telefon, k.email].filter(Boolean).join(' · ');
+                        if (rest) {
+                            const r = document.createElement('span');
+                            r.className = 'w-tel-extern-meta';
+                            r.textContent = rest;
+                            zeile.appendChild(r);
+                        }
+                        box.appendChild(zeile);
+                    });
+                } catch (fehler) {
+                    window.pultStatus(box, 'Adressbuch nicht ladbar: '
+                        + (fehler && fehler.message ? fehler.message : 'unbekannt'));
+                }
+            }
+            externAufbauen();
 
             function zeichne() {
                 liste.textContent = '';
@@ -138,7 +218,7 @@
 
             ioLeiste.append(impBtn, vcfBtn, csvBtn);
 
-            container.append(liste, add, ioLeiste);
+            container.append(extern, liste, add, ioLeiste);
         }
     };
 })();

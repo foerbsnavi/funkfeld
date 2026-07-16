@@ -5,7 +5,9 @@
     'use strict';
     window.PultWidgets = window.PultWidgets || {};
 
-    // Leaflet einmalig nachladen (SRI gesichert), nur wenn gebraucht.
+    // Leaflet einmalig nachladen, nur wenn gebraucht. Liegt seit 1.5.0 lokal unter
+    // assets/vendor/leaflet/ (1.9.4, Hashes beim Vendoren gegen die früheren SRI-Pins
+    // verifiziert) — kein CDN mehr: Karte funktioniert offline/PWA und ohne Drittanbieter.
     let leafletPromise = null;
     function ladeLeaflet() {
         if (window.L) return Promise.resolve(window.L);
@@ -13,14 +15,10 @@
         leafletPromise = new Promise((resolve, reject) => {
             const css = document.createElement('link');
             css.rel = 'stylesheet';
-            css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-            css.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
-            css.crossOrigin = 'anonymous';
+            css.href = 'assets/vendor/leaflet/leaflet.css';
             document.head.appendChild(css);
             const js = document.createElement('script');
-            js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-            js.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-            js.crossOrigin = 'anonymous';
+            js.src = 'assets/vendor/leaflet/leaflet.js';
             js.onload = () => resolve(window.L);
             js.onerror = () => { leafletPromise = null; reject(new Error('Leaflet nicht ladbar')); };
             document.head.appendChild(js);

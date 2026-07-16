@@ -7,7 +7,7 @@
     const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
         'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
-    function zwei(n) { return n < 10 ? '0' + n : '' + n; }
+    const zwei = (n) => window.pultZeit.zwei(n);   // gemeinsamer Helfer (hilfen.js)
 
     window.PultWidgets.uhr = {
         standard() {

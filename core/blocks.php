@@ -210,7 +210,8 @@ function pult_clean_block(string $typ, $content): array
                     break;
                 }
             }
-            return ['items' => $items];
+            // 'buch' = gewähltes externes Adressbuch (CardDAV, Einstellungs-ID — kein Geheimnis)
+            return ['items' => $items, 'buch' => pult_kurz((string) ($content['buch'] ?? ''), 16)];
 
         case 'dateien':
             $items = [];

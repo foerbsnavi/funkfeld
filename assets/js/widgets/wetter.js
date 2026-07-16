@@ -69,19 +69,7 @@
             container.appendChild(wrap);
 
             function status(t, mitEinstellungen) {
-                anzeige.textContent = '';
-                const p = document.createElement('p');
-                p.className = 'w-status';
-                p.textContent = t;
-                anzeige.appendChild(p);
-                if (mitEinstellungen && window.pultEinstellungen) {
-                    const b = document.createElement('button');
-                    b.type = 'button';
-                    b.className = 'w-sekundaer-btn w-feedhinweis-btn';
-                    b.textContent = 'Einstellungen öffnen';
-                    b.addEventListener('click', () => window.pultEinstellungen());
-                    anzeige.appendChild(b);
-                }
+                window.pultStatus(anzeige, t, mitEinstellungen);   // gemeinsamer Helfer (hilfen.js)
                 if (window.pultAnsage) window.pultAnsage(t);
             }
 
@@ -188,8 +176,7 @@
             if (ortFeld.value.trim()) laden();
 
             // Selbst-Aktualisierung alle 15 Minuten (räumt sich beim Schließen auf)
-            const timer = setInterval(() => {
-                if (!container.isConnected) { clearInterval(timer); return; }
+            window.pultIntervall(container, () => {
                 if (ortFeld.value.trim()) laden();
             }, 900000);
         }

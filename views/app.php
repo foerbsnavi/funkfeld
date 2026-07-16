@@ -6,7 +6,7 @@ if (!defined('PULT_ROOT')) {
 }
 // Alle ausgelieferten Skripte (Reihenfolge = Ladereihenfolge).
 $pult_js = [
-    'assets/js/confirm.js', 'assets/js/io.js', 'assets/js/einstellungen.js',
+    'assets/js/hilfen.js', 'assets/js/confirm.js', 'assets/js/io.js', 'assets/js/einstellungen.js',
     'assets/js/widgets/notiz.js', 'assets/js/widgets/checkliste.js', 'assets/js/widgets/links.js',
     'assets/js/widgets/tabelle.js', 'assets/js/widgets/telefonbuch.js', 'assets/js/widgets/dateien.js',
     'assets/js/widgets/uhr.js', 'assets/js/widgets/wetter.js', 'assets/js/widgets/kalender.js',
@@ -14,10 +14,14 @@ $pult_js = [
     'assets/js/widgets/karte.js', 'assets/js/widgets/livestream.js', 'assets/js/widgets/wirtschaft.js',
     'assets/js/widgets/custom.js', 'assets/js/widgets/neuigkeiten.js', 'assets/js/pult.js',
 ];
-// Cache-Buster: neueste Änderungszeit über ALLE Assets (CSS + JS), damit auch ein einzelnes
-// Widget-Update sofort greift statt eine veraltete Datei aus dem Browser-Cache zu liefern.
+// Cache-Buster: neueste Änderungszeit über ALLE Assets (CSS + JS + Vendor), damit auch ein
+// einzelnes Widget- oder Leaflet-Update sofort greift statt eine veraltete Datei aus dem
+// Browser-/Service-Worker-Cache zu liefern (die SW-Registrier-URL hängt an diesem Wert).
 $ver_zeiten = [1, (int) @filemtime(__DIR__ . '/../assets/css/pult.css')];
 foreach ($pult_js as $src) { $ver_zeiten[] = (int) @filemtime(__DIR__ . '/../' . $src); }
+foreach (['assets/vendor/leaflet/leaflet.js', 'assets/vendor/leaflet/leaflet.css'] as $src) {
+    $ver_zeiten[] = (int) @filemtime(__DIR__ . '/../' . $src);
+}
 $ver = (string) max($ver_zeiten);
 ?>
 <!DOCTYPE html>
@@ -27,10 +31,13 @@ $ver = (string) max($ver_zeiten);
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>Funkfeld — Dashboard</title>
+    <meta name="theme-color" content="#0e1116">
     <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="assets/img/icon-180.png">
+    <link rel="manifest" href="manifest.webmanifest">
     <link rel="stylesheet" href="assets/css/pult.css?v=<?= e($ver) ?>">
 </head>
-<body class="app-body" data-csrf="<?= e(csrf_token()) ?>">
+<body class="app-body" data-csrf="<?= e(csrf_token()) ?>" data-ver="<?= e($ver) ?>">
 
     <?php include __DIR__ . '/topbar.php'; ?>
 

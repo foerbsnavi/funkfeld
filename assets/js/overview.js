@@ -230,4 +230,10 @@
             updStatus.textContent = (r && r.fehler) ? r.fehler : 'Update fehlgeschlagen.';
         }
     });
+
+    // PWA: Service Worker registrieren (gleiches Muster wie in pult.js)
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js?v=' + encodeURIComponent(document.body.dataset.ver || '0'))
+            .catch(() => { /* ohne SW läuft alles normal weiter */ });
+    }
 })();

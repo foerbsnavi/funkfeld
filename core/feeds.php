@@ -285,3 +285,69 @@ function pult_ratelimit(string $key, int $max, int $fenster): bool
     store_write($pfad, ['t' => $stempel]);
     return true;
 }
+
+/* ---------------------------------------------------------------------------
+   DAV-Transport (seit 1.5.0): CardDAV REPORT / CalDAV REPORT+PUT.
+   Sicherheitslinie wie pult_fetch: nur http/https, nur öffentliche IPs,
+   IP-Pinning gegen DNS-Rebinding. Bewusst KEINE Weiterleitungen (Basic-Auth
+   darf nie einem Redirect hinterherlaufen) und cURL-Pflicht (nur cURL kann
+   den Host an die geprüfte IP binden).
+   --------------------------------------------------------------------------- */
+
+/**
+ * Transportteil, gepinnt auf die bereits geprüfte IP ($ziel aus pult_url_aufloesen).
+ * Interna — Einstieg für Anwendungscode ist pult_dav_abruf() mit SSRF-Prüfung.
+ */
+function pult_dav_einmal(string $url, array $ziel, string $methode, array $kopf, string $body, string $user, string $pw, int $maxBytes, int $timeout): array
+{
+    if (!function_exists('curl_init')) {
+        return ['code' => 0, 'body' => null, 'fehler' => 'PHP-Erweiterung cURL fehlt auf diesem Server'];
+    }
+    $daten   = '';
+    $zuGross = false;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST  => $methode,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_RESOLVE        => [$ziel['host'] . ':' . $ziel['port'] . ':' . $ziel['ip']],
+        CURLOPT_TIMEOUT        => $timeout,
+        CURLOPT_CONNECTTIMEOUT => $timeout,
+        CURLOPT_USERAGENT      => 'Funkfeld/1.0 (+selbstgehostet)',
+        CURLOPT_PROTOCOLS      => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+        CURLOPT_HTTPHEADER     => $kopf,
+        CURLOPT_HTTPAUTH       => CURLAUTH_BASIC,
+        CURLOPT_USERPWD        => $user . ':' . $pw,
+        CURLOPT_POSTFIELDS     => $body,
+        CURLOPT_WRITEFUNCTION  => function ($ch, $chunk) use (&$daten, $maxBytes, &$zuGross) {
+            $daten .= $chunk;
+            if (strlen($daten) > $maxBytes) {
+                $zuGross = true;
+                return 0;
+            }
+            return strlen($chunk);
+        },
+    ]);
+    $ok   = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($zuGross) {
+        return ['code' => $code, 'body' => null, 'fehler' => 'Antwort zu groß'];
+    }
+    if ($ok === false) {
+        return ['code' => 0, 'body' => null, 'fehler' => 'nicht erreichbar (Verbindung fehlgeschlagen)'];
+    }
+    return ['code' => $code, 'body' => $daten, 'fehler' => null];
+}
+
+/**
+ * DAV-Aufruf mit Methode/Headern/Body und Basic-Auth. SSRF-geprüft; keine
+ * Weiterleitungen. Rückgabe: ['code' => int, 'body' => ?string, 'fehler' => ?string].
+ */
+function pult_dav_abruf(string $url, string $methode, array $kopf, string $body, string $user, string $pw, int $maxBytes = 2097152, int $timeout = 8): array
+{
+    $ziel = pult_url_aufloesen($url);
+    if ($ziel === null) {
+        return ['code' => 0, 'body' => null, 'fehler' => 'Adresse nicht erlaubt (nur http/https, keine internen Server)'];
+    }
+    return pult_dav_einmal($url, $ziel, $methode, $kopf, $body, $user, $pw, $maxBytes, $timeout);
+}

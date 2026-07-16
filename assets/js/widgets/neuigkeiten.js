@@ -13,15 +13,7 @@
         neuigkeiten: 'Neuigkeiten'
     };
 
-    function zwei(n) { return n < 10 ? '0' + n : '' + n; }
-    function zeitText(ts) {
-        if (!ts) return '';
-        const d = new Date(ts * 1000);
-        const heute = new Date();
-        const uhr = zwei(d.getHours()) + ':' + zwei(d.getMinutes());
-        if (d.toDateString() === heute.toDateString()) return uhr;
-        return d.getDate() + '.' + (d.getMonth() + 1) + '. ' + uhr;
-    }
+    const zeitText = (ts) => window.pultZeit.zeitText(ts);   // gemeinsamer Helfer (hilfen.js)
 
     /** Kartenname in Anführungszeichen, aber nur wenn er nicht ohnehin dem Typ-Label entspricht. */
     function benannt(label, ziel) {
@@ -43,6 +35,7 @@
                                         + (ziel ? ' in ' + ziel : '');
             case 'feed':         return (n > 0 ? n + (n === 1 ? ' neuer Beitrag' : ' neue Beiträge') : 'Neuer Beitrag')
                                         + (ziel ? ' (' + ziel + ')' : '');
+            case 'termin':       return 'Termin angelegt' + (ziel ? ' in „' + ziel + '“' : '');
             default:             return benannt(label, ziel);
         }
     }
@@ -141,8 +134,7 @@
             neu.addEventListener('click', () => { pruefen(); laden(); });
             laden();
             pruefen();
-            const pruefTimer = setInterval(() => {
-                if (!container.isConnected) { clearInterval(pruefTimer); return; }
+            window.pultIntervall(container, () => {
                 if (document.hidden) return;
                 pruefen();
             }, 180000);
@@ -157,8 +149,7 @@
                     laden();
                 });
             } else {
-                const timer = setInterval(() => {
-                    if (!container.isConnected) { clearInterval(timer); return; }
+                window.pultIntervall(container, () => {
                     if (document.hidden) return;
                     laden();
                 }, 20000);

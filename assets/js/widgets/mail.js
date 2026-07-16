@@ -3,18 +3,7 @@
     'use strict';
     window.PultWidgets = window.PultWidgets || {};
 
-    function zwei(n) { return n < 10 ? '0' + n : '' + n; }
-    function datumText(ts) {
-        if (!ts) return '';
-        const d = new Date(ts * 1000);
-        const heute = new Date();
-        if (d.toDateString() === heute.toDateString()) {
-            return zwei(d.getHours()) + ':' + zwei(d.getMinutes());
-        }
-        let s = d.getDate() + '.' + (d.getMonth() + 1) + '.';
-        if (d.getFullYear() !== heute.getFullYear()) s += d.getFullYear();
-        return s;
-    }
+    const datumText = (ts) => window.pultZeit.datumText(ts);   // gemeinsamer Helfer (hilfen.js)
 
     window.PultWidgets.mail = {
         standard() { return { konto: '' }; },
@@ -37,19 +26,7 @@
             function leeren() { wrap.textContent = ''; }
             function status(t, mitEinstellungen) {
                 nachListeFokus = false;   // Fehler-/Statuspfad: kein späterer Fokus-Klau
-                leeren();
-                const p = document.createElement('p');
-                p.className = 'w-status';
-                p.textContent = t;
-                wrap.appendChild(p);
-                if (mitEinstellungen && window.pultEinstellungen) {
-                    const b = document.createElement('button');
-                    b.type = 'button';
-                    b.className = 'w-sekundaer-btn w-feedhinweis-btn';
-                    b.textContent = 'Einstellungen öffnen';
-                    b.addEventListener('click', () => window.pultEinstellungen());
-                    wrap.appendChild(b);
-                }
+                window.pultStatus(wrap, t, mitEinstellungen);   // gemeinsamer Helfer (hilfen.js)
                 if (window.pultAnsage) window.pultAnsage(t);
             }
 
@@ -321,8 +298,7 @@
             init();
 
             // Selbst-Aktualisierung alle 2 Minuten, aber nur in der Listenansicht
-            const timer = setInterval(() => {
-                if (!container.isConnected) { clearInterval(timer); return; }
+            window.pultIntervall(container, () => {
                 if (konten.length && wrap.querySelector('.w-mail-liste')) ladeListe();
             }, 120000);
         }

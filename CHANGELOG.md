@@ -4,6 +4,23 @@ Alle nennenswerten Änderungen an Funkfeld werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/),
 Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.5.0] – 2026-07-16
+
+### Neu
+- **PWA:** Funkfeld ist jetzt installierbar (Manifest + Service Worker). Statische Dateien laden aus dem Cache (spürbar schneller), ohne Verbindung erscheint ein ehrlicher Offline-Hinweis. Eigene App-Icons.
+- **Komplett-Backup (ZIP):** Ein Klick in der Dashboard-Übersicht lädt alle eigenen Dashboards samt Dateien und Einstellungen als ZIP herunter (Umzug/Sicherung). Braucht die PHP-Erweiterung ZipArchive.
+- **Externes Telefonbuch (CardDAV):** Das Telefonbuch-Widget kann zusätzlich Kontakte aus einem CardDAV-Adressbuch anzeigen (Nextcloud, Radicale, …) — schreibgeschützt, über den lokalen Kontakten. Adressbücher werden in den Einstellungen hinterlegt (App-Passwort empfohlen).
+- **Termine anlegen (CalDAV):** Kalender, deren Adresse eine CalDAV-Collection ist (Haken in den Einstellungen), bekommen im Widget einen „+ Termin"-Knopf (Titel, von–bis, Ort). CalDAV-Kalender werden auch beim **Lesen** über das CalDAV-Protokoll mit Anmeldung abgefragt — private Kalender funktionieren damit erstmals ohne öffentlichen ICS-Link.
+
+### Geändert
+- **Karte ohne Fremd-Server:** Leaflet liegt jetzt lokal bei (bisher unpkg-CDN) — die Live-Karte funktioniert offline-fähig und ohne Drittanbieter-Aufruf; die Sicherheitsrichtlinie (CSP) wurde entsprechend verengt. Nur die Kartenkacheln (OSM/Esri) kommen weiter aus dem Netz.
+- Werkzeugleiste umbricht auf schmalen Bildschirmen sauber, statt die erste Fläche zu überdecken; Markenschrift nur noch als WOFF2 (−800 KB Paketgewicht); Auslieferung komprimiert (gzip) auch für Selbst-Hoster; gemeinsame Widget-Helfer statt kopiertem Code.
+
+### Sicherheit
+- Termine anlegen ist auf **eigene Dashboards** beschränkt (wie der Mail-Versand); CardDAV-/CalDAV-Passwörter werden **verschlüsselt** gespeichert (AES-256-GCM, wie Mail) und nie an den Browser ausgeliefert.
+- Alle DAV-Abrufe laufen über die bestehende SSRF-/DNS-Rebinding-Prüfung, ohne Weiterleitungen, mit Größen- und Zeitlimit.
+- Das gleichzeitige Speichern der Einstellungen ist jetzt serverseitig serialisiert (kein Überschreib-Wettlauf in geteilten Dashboards).
+
 ## [1.4.0] – 2026-07-02
 
 ### Neu

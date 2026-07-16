@@ -26,13 +26,36 @@ Options -Indexes
     </IfModule>
 </FilesMatch>
 
+# PWA-Manifest: korrekter MIME-Typ (mancher Apache kennt .webmanifest nicht)
+<IfModule mod_mime.c>
+    AddType application/manifest+json .webmanifest
+</IfModule>
+
+# GZIP-Kompression — spart bei den Text-Assets (JS/CSS) und den JSON-API-Antworten
+# typisch 65–75 % Transfervolumen. Auf Servern ohne mod_deflate schweigt der Block.
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json application/xml image/svg+xml
+</IfModule>
+
+# Service Worker: immer frisch prüfen — sw.js darf nie an der 1-Jahres-JS-Regel unten
+# hängen bleiben, sonst verteilen sich SW-Änderungen auf alten Browsern erst nach 24 h.
+<Files "sw.js">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache"
+    </IfModule>
+    <IfModule mod_expires.c>
+        ExpiresActive Off
+    </IfModule>
+</Files>
+
 # Statische Assets lange cachen — unbedenklich, weil alle Verweise einen ?v=-Cache-Buster tragen.
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType text/css "access plus 1 year"
     ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType text/javascript "access plus 1 year"
     ExpiresByType image/svg+xml "access plus 1 year"
-    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
     ExpiresByType font/woff2 "access plus 1 year"
     ExpiresByType application/font-woff2 "access plus 1 year"
 </IfModule>
@@ -44,6 +67,7 @@ Options -Indexes
     Header set Referrer-Policy "same-origin"
     Header set Strict-Transport-Security "max-age=31536000"
     # FF_RAWHTML wird oben per mod_rewrite für action=custom_render gesetzt → globale CSP aussetzen.
-    # Karte: Leaflet von unpkg (Skript+Stil, per SRI gesichert), Kacheln von OSM/Esri/CartoDB.
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'" env=!FF_RAWHTML
+    # Karte: Leaflet liegt lokal (assets/vendor/leaflet) — kein CDN in der CSP mehr.
+    # img-src bleibt https:, weil die Kartenkacheln von OSM/Esri/CartoDB kommen.
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'" env=!FF_RAWHTML
 </IfModule>

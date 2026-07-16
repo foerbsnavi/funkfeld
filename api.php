@@ -99,6 +99,13 @@ function pult_kalender_id(): string
     return bin2hex(random_bytes(4));
 }
 
+/** Liste der externen Adressbücher (CardDAV), leer wenn keine angelegt. */
+function pult_telefonbuecher(): array
+{
+    $b = pult_config()['einstellungen']['telefonbuecher'] ?? [];
+    return is_array($b) ? $b : [];
+}
+
 /**
  * Hängt eine Chat-Nachricht race-frei an chat.json an (exklusives Lock über den
  * gesamten Lese-Ändern-Schreib-Zyklus → kein Nachrichtenverlust bei gleichzeitigen Sendern).
@@ -522,6 +529,76 @@ switch ($action) {
         echo $xml;
         exit;
 
+    // Komplett-Backup als ZIP: alle eigenen Dashboards samt Dateien und Einstellungen.
+    // Standalone: die ganze data/ (ohne Cache/Sperr-/Bremsdateien). Plattform: der eigene
+    // Konto-Bereich (dashboards.json + d/). Nur lesend, nur der Eigentümer der Daten.
+    case 'backup_zip':
+        require_login_api();
+        if (!class_exists('ZipArchive')) {
+            pult_json_fehler('PHP-Erweiterung ZipArchive fehlt auf diesem Server');
+        }
+        if (PULT_PLATFORM) {
+            $sicherungBasis = pult_dash_basis_von(PULT_ACCOUNT_UID);
+        } else {
+            $sicherungBasis = PULT_ROOT . '/data';
+        }
+        if (!is_string($sicherungBasis) || !is_dir($sicherungBasis)) {
+            pult_json_fehler('Keine Daten gefunden', 404);
+        }
+        // Große Datei-Zwischenlager: nicht am Ausführungslimit scheitern, und die
+        // Temp-ZIP auch bei Client-Abbruch mitten im Download noch aufräumen.
+        @set_time_limit(0);
+        ignore_user_abort(true);
+        $zipPfad = tempnam(sys_get_temp_dir(), 'ffbak');
+        if ($zipPfad === false) {
+            pult_json_fehler('Backup fehlgeschlagen', 500);
+        }
+        // Aufräum-Garantie: Auch bei fatalem Abbruch (Memory-/Zeitlimit mitten im ZIP-Aufbau)
+        // darf keine Temp-ZIP mit config.json/key.bin im System-Temp liegen bleiben.
+        register_shutdown_function(function () use ($zipPfad) {
+            if (is_file($zipPfad)) {
+                @unlink($zipPfad);
+            }
+        });
+        $zip = new ZipArchive();
+        if ($zip->open($zipPfad, ZipArchive::OVERWRITE) !== true) {
+            @unlink($zipPfad);
+            pult_json_fehler('Backup fehlgeschlagen', 500);
+        }
+        $wurzel = realpath($sicherungBasis);
+        $iter = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($wurzel, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::LEAVES_ONLY
+        );
+        foreach ($iter as $datei) {
+            if (!$datei->isFile()) {
+                continue;
+            }
+            $voll = (string) $datei->getPathname();
+            $rel  = str_replace('\\', '/', substr($voll, strlen($wurzel) + 1));
+            // Flüchtiges bleibt draußen: Zwischenspeicher (inkl. _update), Sperrdateien,
+            // Brute-Force-Zähler und die Schutz-.htaccess (legt der Installer neu an).
+            if (preg_match('#(^|/)cache(/|$)#', $rel)
+                || substr($rel, -5) === '.lock'
+                || $rel === 'login.json'
+                || basename($rel) === '.htaccess') {
+                continue;
+            }
+            $zip->addFile($voll, 'data/' . $rel);
+        }
+        $anzahl = $zip->numFiles;
+        $zip->close();
+        if ($anzahl < 1) {
+            @unlink($zipPfad);
+            pult_json_fehler('Keine Daten gefunden', 404);
+        }
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="funkfeld_backup_' . date('Y-m-d') . '.zip"');
+        header('Content-Length: ' . (string) filesize($zipPfad));
+        readfile($zipPfad);
+        @unlink($zipPfad);
+        exit;
+
     // Dashboard aus hochgeladenem XML importieren → neues Dashboard.
     case 'dash_import':
         require_login_api();
@@ -676,7 +753,8 @@ switch ($action) {
         }
         // Nur Code übernehmen — data/ bleibt unangetastet.
         $codeDirs  = ['core', 'assets', 'views'];
-        $codeFiles = ['index.php', 'api.php', 'install.php', 'version.json', 'README.txt', 'README.md', 'CHANGELOG.md', 'LICENSE', '.htaccess', 'robots.txt'];
+        $codeFiles = ['index.php', 'api.php', 'install.php', 'version.json', 'README.txt', 'README.md', 'CHANGELOG.md', 'LICENSE', '.htaccess', 'robots.txt',
+            'sw.js', 'manifest.webmanifest', 'offline.html'];   // PWA (seit 1.5.0)
         foreach ($codeDirs as $d) {
             if (is_dir($quelle . '/' . $d)) {
                 pult_rrmdir(PULT_ROOT . '/' . $d);
@@ -804,17 +882,42 @@ switch ($action) {
             return $aus;
         }, pult_mailkonten());
         $kalender = array_map(function ($k) use ($vollzugriff) {
-            return [
-                'id'   => (string) ($k['id'] ?? ''),
-                'name' => (string) ($k['name'] ?? ''),
-                'url'  => $vollzugriff ? pult_klartext((string) ($k['url'] ?? '')) : '',
+            $aus = [
+                'id'     => (string) ($k['id'] ?? ''),
+                'name'   => (string) ($k['name'] ?? ''),
+                'url'    => $vollzugriff ? pult_klartext((string) ($k['url'] ?? '')) : '',
+                // caldav ist kein Geheimnis — das Widget blendet danach den „+ Termin"-Knopf ein
+                'caldav' => !empty($k['caldav']),
             ];
+            if ($vollzugriff) {
+                $aus['user']       = (string) ($k['user'] ?? '');
+                $aus['pw_gesetzt'] = ((string) ($k['pw_enc'] ?? '')) !== '';
+            }
+            return $aus;
         }, pult_kalender());
+        // Externe Adressbücher (CardDAV): Zugangsdaten nur für Voll-Recht, Passwort nie
+        $buecher = array_map(function ($b) use ($vollzugriff) {
+            $aus = [
+                'id'         => (string) ($b['id'] ?? ''),
+                'name'       => (string) ($b['name'] ?? ''),
+                'pw_gesetzt' => ((string) ($b['pw_enc'] ?? '')) !== '',
+            ];
+            if ($vollzugriff) {
+                $aus['url']  = (string) ($b['url'] ?? '');
+                $aus['user'] = (string) ($b['user'] ?? '');
+            }
+            return $aus;
+        }, pult_telefonbuecher());
         pult_json_ok(['einstellungen' => [
             'recht'           => $recht,
+            // eigenes Dashboard? (Termine anlegen/Mail senden gehen nur dort — Widgets
+            // blenden entsprechende Aktionen bei beigetretenen Dashboards gar nicht ein)
+            'eigenes'         => !(defined('PULT_PLATFORM') && PULT_PLATFORM
+                                   && defined('PULT_DASH_OWNER') && PULT_DASH_OWNER !== pult_dash_eigner()),
             'owm_key_gesetzt' => ((string) ($e['owm_key'] ?? '')) !== '',
             'kalender'        => array_values($kalender),
             'mailkonten'      => array_values($konten),
+            'telefonbuecher'  => array_values($buecher),
             'chatnamen'       => pult_chatnamen(),
         ]]);
         break;
@@ -830,7 +933,17 @@ switch ($action) {
             pult_json_fehler('CSRF', 403);
         }
         pult_verlangt('voll');   // Zugänge/Einstellungen darf nur der Eigentümer bzw. Voll-Recht ändern
-        $cfg = pult_config();
+        // Exklusives Lock über den ganzen Lese-Ändern-Schreib-Zyklus (wie pult_chat_anhaengen):
+        // zwei gleichzeitige Speichervorgänge (geteiltes Dashboard, Voll-Recht) dürfen sich
+        // nicht gegenseitig überschreiben. store_write bleibt atomar für die Leser.
+        $cfgLock = @fopen(PULT_CONFIG . '.lock', 'c');
+        if (!$cfgLock || !flock($cfgLock, LOCK_EX)) {
+            if ($cfgLock) {
+                fclose($cfgLock);
+            }
+            pult_json_fehler('Speichern fehlgeschlagen', 500);
+        }
+        $cfg = pult_config(true);   // im Lock frisch von Platte lesen, nicht aus dem Request-Cache
         if (!isset($cfg['einstellungen']) || !is_array($cfg['einstellungen'])) {
             $cfg['einstellungen'] = [];
         }
@@ -841,10 +954,11 @@ switch ($action) {
             $e['owm_key'] = pult_geheim((string) $e['owm_key']);   // Altbestand (Klartext) migrieren
         }
         if (isset($body['kalender']) && is_array($body['kalender'])) {
-            // bestehende IDs merken (damit die Block-Auswahl der Flächen erhalten bleibt)
-            $altIds = [];
+            // bestehende Einträge nach ID merken (Block-Auswahl der Flächen bleibt erhalten,
+            // und ein leeres Passwort-Feld überschreibt das hinterlegte CalDAV-Passwort nicht)
+            $alt = [];
             foreach (pult_kalender() as $k) {
-                $altIds[(string) ($k['id'] ?? '')] = true;
+                $alt[(string) ($k['id'] ?? '')] = $k;
             }
             $neu = [];
             $verwendet = [];
@@ -860,18 +974,61 @@ switch ($action) {
                 }
                 // ID nur übernehmen, wenn sie zu einem bestehenden Kalender gehört und noch frei ist
                 $id = (string) ($k['id'] ?? '');
-                if (!isset($altIds[$id]) || isset($verwendet[$id]) || $id === '') {
+                if (!isset($alt[$id]) || isset($verwendet[$id]) || $id === '') {
                     $id = pult_kalender_id();
                 }
                 $verwendet[$id] = true;
-                $neu[] = [
+                $eintrag = [
                     'id'   => $id,
                     'name' => $name !== '' ? $name : 'Kalender',
                     'url'  => pult_geheim($url),   // Kalender-Adresse verschlüsselt ablegen (Token im Pfad)
                 ];
+                // CalDAV (seit 1.5.0): beschreibbare Collection mit Benutzer + Passwort
+                if (!empty($k['caldav'])) {
+                    $eintrag['caldav'] = true;
+                    $eintrag['user']   = pult_kurz((string) ($k['user'] ?? ''), 255);
+                    $pwNeu = (string) ($k['passwort'] ?? '');
+                    $eintrag['pw_enc'] = $pwNeu !== ''
+                        ? pult_encrypt($pwNeu)
+                        : (string) ($alt[$id]['pw_enc'] ?? '');
+                }
+                $neu[] = $eintrag;
             }
             $e['kalender'] = $neu;
             unset($e['kalender_url']);   // altes Einzel-URL-Format ablösen
+        }
+        if (isset($body['telefonbuecher']) && is_array($body['telefonbuecher'])) {
+            // Externe Adressbücher (CardDAV, nur Lesen) — Muster wie Mail-Konten
+            $alt = [];
+            foreach (pult_telefonbuecher() as $b) {
+                $alt[(string) ($b['id'] ?? '')] = $b;
+            }
+            $neu = [];
+            $verwendet = [];
+            foreach ($body['telefonbuecher'] as $b) {
+                if (!is_array($b) || count($neu) >= 10) {
+                    continue;
+                }
+                $name = pult_kurz((string) ($b['name'] ?? ''), 60);
+                $url  = pult_clean_url(pult_kurz((string) ($b['url'] ?? ''), 2000));
+                if ($url === '') {
+                    continue;   // ohne gültige Adresse kein Eintrag
+                }
+                $id = (string) ($b['id'] ?? '');
+                if (!isset($alt[$id]) || isset($verwendet[$id]) || $id === '') {
+                    $id = pult_kalender_id();   // gleiche 8-Hex-Form
+                }
+                $verwendet[$id] = true;
+                $pwNeu = (string) ($b['passwort'] ?? '');
+                $neu[] = [
+                    'id'     => $id,
+                    'name'   => $name !== '' ? $name : 'Adressbuch',
+                    'url'    => $url,
+                    'user'   => pult_kurz((string) ($b['user'] ?? ''), 255),
+                    'pw_enc' => $pwNeu !== '' ? pult_encrypt($pwNeu) : (string) ($alt[$id]['pw_enc'] ?? ''),
+                ];
+            }
+            $e['telefonbuecher'] = $neu;
         }
         if (isset($body['mailkonten']) && is_array($body['mailkonten'])) {
             // bestehende verschlüsselte Passwörter nach ID merken (wenn unverändert)
@@ -935,10 +1092,13 @@ switch ($action) {
             $e['chatnamen'] = $namen;
         }
         unset($e);
-        if (!store_write(PULT_CONFIG, $cfg)) {
+        $cfgOk = store_write(PULT_CONFIG, $cfg);
+        flock($cfgLock, LOCK_UN);
+        fclose($cfgLock);
+        pult_config(true);
+        if (!$cfgOk) {
             pult_json_fehler('Speichern fehlgeschlagen', 500);
         }
-        pult_config(true);
         pult_json_ok();
         break;
 
@@ -1141,18 +1301,19 @@ switch ($action) {
     case 'kalender':
         require_login_api();
         $kid   = (string) ($_GET['kalender'] ?? '');
-        $url   = '';
+        $kal   = null;
         $liste = pult_kalender();
         foreach ($liste as $k) {
             if ((string) ($k['id'] ?? '') === $kid && $kid !== '') {
-                $url = trim(pult_klartext((string) ($k['url'] ?? '')));   // Adresse entschlüsseln
+                $kal = $k;
                 break;
             }
         }
         // Fallback: ohne (oder mit unbekannter) ID den ersten Kalender nehmen
-        if ($url === '' && $liste) {
-            $url = trim(pult_klartext((string) ($liste[0]['url'] ?? '')));
+        if ($kal === null && $liste) {
+            $kal = $liste[0];
         }
+        $url = $kal ? trim(pult_klartext((string) ($kal['url'] ?? ''))) : '';   // Adresse entschlüsseln
         if ($url === '') {
             pult_json_fehler('Kein Kalender in den Einstellungen hinterlegt');
         }
@@ -1162,14 +1323,39 @@ switch ($action) {
         if ($cache !== null) {
             pult_json_ok(['termine' => $cache, 'cache' => true]);
         }
-        // SSRF-Prüfung nur auf dem echten Abruf-Pfad (DNS-Auflösung + IP-Whitelist)
-        if (!pult_url_erlaubt($url)) {
-            pult_json_fehler('Kalender-Adresse nicht erlaubt (nur http/https, keine internen Server)');
-        }
-        $erg = pult_fetch_info($url, 1048576, 8, true);   // strikt: ohne cURL kein Fallback
-        $roh = $erg['body'];
-        if ($roh === null) {
-            pult_json_fehler('Kalender nicht erreichbar (' . ($erg['fehler'] ?? 'unbekannt') . ')', 502);
+        if (!empty($kal['caldav'])) {
+            // CalDAV-Collection: private Kalender liefern ohne Anmeldung nichts —
+            // REPORT calendar-query mit Basic-Auth (SSRF-geprüft in pult_dav_abruf).
+            $erg = pult_dav_abruf(
+                $url,
+                'REPORT',
+                ['Content-Type: application/xml; charset=utf-8', 'Depth: 1'],
+                '<?xml version="1.0" encoding="utf-8" ?>'
+                . '<C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">'
+                . '<D:prop><C:calendar-data/></D:prop>'
+                . '<C:filter><C:comp-filter name="VCALENDAR"><C:comp-filter name="VEVENT"/></C:comp-filter></C:filter>'
+                . '</C:calendar-query>',
+                (string) ($kal['user'] ?? ''),
+                pult_decrypt((string) ($kal['pw_enc'] ?? ''))
+            );
+            if ($erg['body'] === null || $erg['code'] < 200 || $erg['code'] >= 300) {
+                pult_json_fehler('Kalender nicht erreichbar ('
+                    . ($erg['fehler'] ?? ('HTTP ' . $erg['code'])) . ')', 502);
+            }
+            $roh = implode("\r\n", pult_dav_datenfelder($erg['body'], 'urn:ietf:params:xml:ns:caldav', 'calendar-data'));
+            if ($roh === '') {
+                $roh = "BEGIN:VCALENDAR\r\nEND:VCALENDAR";   // leerer Kalender ist kein Fehler
+            }
+        } else {
+            // SSRF-Prüfung nur auf dem echten Abruf-Pfad (DNS-Auflösung + IP-Whitelist)
+            if (!pult_url_erlaubt($url)) {
+                pult_json_fehler('Kalender-Adresse nicht erlaubt (nur http/https, keine internen Server)');
+            }
+            $erg = pult_fetch_info($url, 1048576, 8, true);   // strikt: ohne cURL kein Fallback
+            $roh = $erg['body'];
+            if ($roh === null) {
+                pult_json_fehler('Kalender nicht erreichbar (' . ($erg['fehler'] ?? 'unbekannt') . ')', 502);
+            }
         }
         $jetzt   = time();
         $kommend = [];
@@ -1194,6 +1380,104 @@ switch ($action) {
         $kommend = array_slice($kommend, 0, 12);
         pult_cache_set($ckey, $kommend);
         pult_json_ok(['termine' => $kommend]);
+        break;
+
+    // Externes Adressbuch (CardDAV) lesen — wie der Kalender Board-Inhalt: der Eigentümer
+    // entscheidet über die Fläche, was auf dem Board erscheint. Passwort bleibt serverseitig.
+    case 'carddav_liste':
+        require_login_api();
+        $bid  = (string) ($_GET['buch'] ?? '');
+        $buch = null;
+        foreach (pult_telefonbuecher() as $b) {
+            if ((string) ($b['id'] ?? '') === $bid && $bid !== '') {
+                $buch = $b;
+                break;
+            }
+        }
+        if ($buch === null) {
+            pult_json_fehler('Adressbuch nicht gefunden', 404);
+        }
+        $ckey  = 'carddav_' . $bid;
+        $cache = pult_cache_get($ckey, 600);   // 10 Minuten (wie RSS/Kalender)
+        if ($cache !== null) {
+            pult_json_ok(['kontakte' => $cache, 'name' => (string) ($buch['name'] ?? ''), 'cache' => true]);
+        }
+        $erg = pult_dav_abruf(
+            (string) ($buch['url'] ?? ''),
+            'REPORT',
+            ['Content-Type: application/xml; charset=utf-8', 'Depth: 1'],
+            '<?xml version="1.0" encoding="utf-8" ?>'
+            . '<C:addressbook-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">'
+            . '<D:prop><C:address-data/></D:prop>'
+            . '</C:addressbook-query>',
+            (string) ($buch['user'] ?? ''),
+            pult_decrypt((string) ($buch['pw_enc'] ?? ''))
+        );
+        if ($erg['body'] === null || $erg['code'] < 200 || $erg['code'] >= 300) {
+            pult_json_fehler('Adressbuch nicht erreichbar ('
+                . ($erg['fehler'] ?? ('HTTP ' . $erg['code'])) . ')', 502);
+        }
+        $kontakte = pult_vcard_parse(implode("\r\n", pult_dav_datenfelder($erg['body'], 'urn:ietf:params:xml:ns:carddav', 'address-data')));
+        pult_cache_set($ckey, $kontakte);
+        pult_json_ok(['kontakte' => $kontakte, 'name' => (string) ($buch['name'] ?? '')]);
+        break;
+
+    // Termin in einem CalDAV-Kalender anlegen (PUT VEVENT). Wie der Mail-Versand auf
+    // EIGENE Dashboards beschränkt: Schreiben über die Zugangsdaten des Eigentümers
+    // bleibt dem Eigentümer vorbehalten.
+    case 'kalender_anlegen':
+        require_login_api();
+        if ($method !== 'POST') {
+            pult_json_fehler('nur POST', 405);
+        }
+        $body = pult_body();
+        if ($body === null || !csrf_valid($body['csrf'] ?? null)) {
+            pult_json_fehler('CSRF', 403);
+        }
+        if (defined('PULT_PLATFORM') && PULT_PLATFORM
+            && defined('PULT_DASH_OWNER') && PULT_DASH_OWNER !== pult_dash_eigner()) {
+            pult_json_fehler('Termine anlegen ist nur in eigenen Dashboards möglich.', 403);
+        }
+        $kid = (string) ($body['kalender'] ?? '');
+        $kal = null;
+        foreach (pult_kalender() as $k) {
+            if ((string) ($k['id'] ?? '') === $kid && $kid !== '') {
+                $kal = $k;
+                break;
+            }
+        }
+        if ($kal === null || empty($kal['caldav'])) {
+            pult_json_fehler('Dieser Kalender ist nicht beschreibbar (kein CalDAV)');
+        }
+        $titel = pult_kurz((string) ($body['titel'] ?? ''), 200);
+        $ort   = pult_kurz((string) ($body['ort'] ?? ''), 200);
+        $start = (int) ($body['start'] ?? 0);
+        $ende  = (int) ($body['ende'] ?? 0);
+        if ($titel === '') {
+            pult_json_fehler('Titel fehlt');
+        }
+        // Plausibel: echtes Zeitfenster, Ende nach Beginn, höchstens ein Jahr lang
+        if ($start < 946684800 || $start > 4102444800 || $ende <= $start || ($ende - $start) > 31536000) {
+            pult_json_fehler('Zeitraum ungültig');
+        }
+        [$uid, $ics] = pult_vevent_ics($titel, $start, $ende, $ort);
+        $kalUrl = trim(pult_klartext((string) ($kal['url'] ?? '')));
+        $erg = pult_dav_abruf(
+            rtrim($kalUrl, '/') . '/' . $uid . '.ics',
+            'PUT',
+            ['Content-Type: text/calendar; charset=utf-8', 'If-None-Match: *'],   // nie überschreiben
+            $ics,
+            (string) ($kal['user'] ?? ''),
+            pult_decrypt((string) ($kal['pw_enc'] ?? ''))
+        );
+        if ($erg['code'] < 200 || $erg['code'] >= 300) {
+            pult_json_fehler('Anlegen fehlgeschlagen ('
+                . ($erg['fehler'] ?? ('HTTP ' . $erg['code'])) . ')', 502);
+        }
+        // Kalender-Cache verwerfen, damit der neue Termin sofort in der Liste erscheint
+        @unlink(pult_cache_pfad('kal_' . md5($kalUrl)));
+        pult_akt('kalender', 'termin', mb_substr((string) ($kal['name'] ?? 'Kalender'), 0, 120));
+        pult_json_ok();
         break;
 
     // RSS/Atom-Feed — nutzerdefinierte URL, daher SSRF-geschützt + strikt

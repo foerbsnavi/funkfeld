@@ -176,7 +176,28 @@
             kbox.className = 'pe-konto';
             kbox.setAttribute('role', 'group');
             const name = feld('Name', 'text', k.name || '', 'z. B. Privat');
-            const url = feld('Adresse (ICS/iCal)', 'url', k.url || '', 'https://…');
+            const url = feld('Adresse (ICS/iCal oder CalDAV-Collection)', 'url', k.url || '', 'https://…');
+
+            // --- CalDAV (optional): macht den Kalender beschreibbar („+ Termin" im Widget) ---
+            const cdTrenner = document.createElement('div');
+            cdTrenner.className = 'pe-unterzeile';
+            cdTrenner.textContent = 'CalDAV (optional — zum Termine-Anlegen)';
+            const cdLabel = document.createElement('label');
+            cdLabel.className = 'pe-label pe-haken';
+            const cdHaken = document.createElement('input');
+            cdHaken.type = 'checkbox';
+            cdHaken.checked = !!k.caldav;
+            cdLabel.append(cdHaken, document.createTextNode(' Adresse ist eine CalDAV-Collection (Nextcloud, Radicale …)'));
+            const cdUser = feld('Benutzer', 'text', k.user || '', '');
+            const cdPw = feld('Passwort (App-Passwort empfohlen)', 'password', '',
+                k.pw_gesetzt ? '•••••• hinterlegt' : 'Passwort');
+            function caldavFelder() {
+                cdUser.label.hidden = !cdHaken.checked;
+                cdPw.label.hidden = !cdHaken.checked;
+            }
+            caldavFelder();
+            cdHaken.addEventListener('change', caldavFelder);
+
             const weg = document.createElement('button');
             weg.type = 'button';
             weg.className = 'w-sekundaer-btn pe-konto-weg';
@@ -193,7 +214,10 @@
                 lesen: () => ({
                     id: k.id || '',
                     name: name.input.value.trim(),
-                    url: url.input.value.trim()
+                    url: url.input.value.trim(),
+                    caldav: cdHaken.checked,
+                    user: cdUser.input.value.trim(),
+                    passwort: cdPw.input.value
                 })
             };
             weg.addEventListener('click', () => {
@@ -201,7 +225,7 @@
                 const i = kalRows.indexOf(eintrag);
                 if (i >= 0) kalRows.splice(i, 1);
             });
-            kbox.append(name.label, url.label, weg);
+            kbox.append(name.label, url.label, cdTrenner, cdLabel, cdUser.label, cdPw.label, weg);
             return eintrag;
         }
         function addKalender(k) {
@@ -215,6 +239,63 @@
         addKalBtn.className = 'w-sekundaer-btn pe-konto-add';
         addKalBtn.textContent = '+ Kalender hinzufügen';
         addKalBtn.addEventListener('click', () => addKalender({}));
+
+        // Telefonbuch — externe Adressbücher (CardDAV, nur Lesen)
+        const buecher = Array.isArray(e.telefonbuecher) ? e.telefonbuecher : [];
+        const buchWrap = document.createElement('div');
+        buchWrap.className = 'pe-konten';
+        const buchRows = [];
+        function buchZeile(b) {
+            b = b || {};
+            const kbox = document.createElement('div');
+            kbox.className = 'pe-konto';
+            kbox.setAttribute('role', 'group');
+            const name = feld('Name', 'text', b.name || '', 'z. B. Nextcloud');
+            const url = feld('Adressbuch-Adresse (CardDAV)', 'url', b.url || '',
+                'https://cloud.…/remote.php/dav/addressbooks/users/…/contacts/');
+            const user = feld('Benutzer', 'text', b.user || '', '');
+            const pw = feld('Passwort (App-Passwort empfohlen)', 'password', '',
+                b.pw_gesetzt ? '•••••• hinterlegt' : 'Passwort');
+            const weg = document.createElement('button');
+            weg.type = 'button';
+            weg.className = 'w-sekundaer-btn pe-konto-weg';
+            weg.textContent = 'Adressbuch entfernen';
+            function labelSetzen() {
+                const nm = name.input.value.trim();
+                kbox.setAttribute('aria-label', nm ? 'Adressbuch: ' + nm : 'Neues Adressbuch');
+                weg.setAttribute('aria-label', (nm ? 'Adressbuch „' + nm + '"' : 'Neues Adressbuch') + ' entfernen');
+            }
+            labelSetzen();
+            name.input.addEventListener('input', labelSetzen);
+            const eintrag = {
+                element: kbox,
+                lesen: () => ({
+                    id: b.id || '',
+                    name: name.input.value.trim(),
+                    url: url.input.value.trim(),
+                    user: user.input.value.trim(),
+                    passwort: pw.input.value
+                })
+            };
+            weg.addEventListener('click', () => {
+                kbox.remove();
+                const i = buchRows.indexOf(eintrag);
+                if (i >= 0) buchRows.splice(i, 1);
+            });
+            kbox.append(name.label, url.label, user.label, pw.label, weg);
+            return eintrag;
+        }
+        function addBuch(b) {
+            const z = buchZeile(b);
+            buchRows.push(z);
+            buchWrap.appendChild(z.element);
+        }
+        buecher.forEach(addBuch);
+        const addBuchBtn = document.createElement('button');
+        addBuchBtn.type = 'button';
+        addBuchBtn.className = 'w-sekundaer-btn pe-konto-add';
+        addBuchBtn.textContent = '+ Adressbuch hinzufügen';
+        addBuchBtn.addEventListener('click', () => addBuch({}));
 
         // Mail — mehrere Postfächer
         const kontenWrap = document.createElement('div');
@@ -364,6 +445,7 @@
             box.append(
                 gruppe('Wetter'), owm.label,
                 gruppe('Kalender'), kalWrap, addKalBtn,
+                gruppe('Telefonbuch — externe Adressbücher (CardDAV)'), buchWrap, addBuchBtn,
                 gruppe('Mail'), kontenWrap, addBtn,
                 gruppe('Chat-Namen'), namenWrap, addNameBtn);
         } else {
@@ -412,6 +494,9 @@
                 kalender: kalRows
                     .map((r) => r.lesen())
                     .filter((k) => k.url),
+                telefonbuecher: buchRows
+                    .map((r) => r.lesen())
+                    .filter((b) => b.url),
                 mailkonten: kontoRows
                     .map((r) => r.lesen())
                     .filter((k) => k.name || k.host || k.user),

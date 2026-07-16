@@ -4,15 +4,7 @@
     window.PultWidgets = window.PultWidgets || {};
 
     const NAME_KEY = 'pult_chat_name';
-    function zwei(n) { return n < 10 ? '0' + n : '' + n; }
-    function zeitText(ts) {
-        if (!ts) return '';
-        const d = new Date(ts * 1000);
-        const heute = new Date();
-        const uhr = zwei(d.getHours()) + ':' + zwei(d.getMinutes());
-        if (d.toDateString() === heute.toDateString()) return uhr;
-        return d.getDate() + '.' + (d.getMonth() + 1) + '. ' + uhr;
-    }
+    const zeitText = (ts) => window.pultZeit.zeitText(ts);   // gemeinsamer Helfer (hilfen.js)
 
     window.PultWidgets.chat = {
         standard() { return {}; },
@@ -72,20 +64,8 @@
             function eingabeAktiv(an) { feld.disabled = !an; sendBtn.disabled = !an; }
 
             function hinweis(t, mitEinstellungen) {
-                liste.textContent = '';
                 letzteSig = null;
-                const p = document.createElement('p');
-                p.className = 'w-status';
-                p.textContent = t;
-                liste.appendChild(p);
-                if (mitEinstellungen && window.pultEinstellungen) {
-                    const b = document.createElement('button');
-                    b.type = 'button';
-                    b.className = 'w-sekundaer-btn w-feedhinweis-btn';
-                    b.textContent = 'Einstellungen öffnen';
-                    b.addEventListener('click', () => window.pultEinstellungen());
-                    liste.appendChild(b);
-                }
+                window.pultStatus(liste, t, mitEinstellungen);   // gemeinsamer Helfer (hilfen.js)
                 if (window.pultAnsage) window.pultAnsage(t);
             }
 
@@ -221,8 +201,7 @@
                 });
             } else {
                 // Rückfall ohne zentralen Sync (sollte nicht vorkommen — Dateien werden zusammen ausgeliefert)
-                const timer = setInterval(() => {
-                    if (!container.isConnected) { clearInterval(timer); return; }
+                window.pultIntervall(container, () => {
                     if (document.hidden || document.querySelector('.pult-modal-overlay')) return;
                     ladeNachrichten();
                 }, 15000);

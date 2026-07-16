@@ -3,18 +3,7 @@
     'use strict';
     window.PultWidgets = window.PultWidgets || {};
 
-    function zwei(n) { return n < 10 ? '0' + n : '' + n; }
-    function datumText(ts) {
-        if (!ts) return '';
-        const d = new Date(ts * 1000);
-        const heute = new Date();
-        if (d.toDateString() === heute.toDateString()) {
-            return zwei(d.getHours()) + ':' + zwei(d.getMinutes());
-        }
-        let s = d.getDate() + '.' + (d.getMonth() + 1) + '.';
-        if (d.getFullYear() !== heute.getFullYear()) s += d.getFullYear();
-        return s;
-    }
+    const datumText = (ts) => window.pultZeit.datumText(ts);   // gemeinsamer Helfer (hilfen.js)
 
     window.PultWidgets.rss = {
         standard() {
@@ -112,8 +101,7 @@
             if (urlFeld.value.trim()) laden();
 
             // Selbst-Aktualisierung alle 15 Minuten (räumt sich beim Schließen auf)
-            const timer = setInterval(() => {
-                if (!container.isConnected) { clearInterval(timer); return; }
+            window.pultIntervall(container, () => {
                 if (urlFeld.value.trim()) laden();
             }, 900000);
         }

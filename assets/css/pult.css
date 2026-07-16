@@ -3,11 +3,11 @@
    ========================================================= */
 
 /* Marken-/Überschriftenschrift: ProtestRevolution (kreidig, wie an der Tafel).
-   WOFF2 zuerst (≈ ein Drittel der TTF-Größe), TTF als Rückfall für alte Browser. */
+   Nur WOFF2 (kann jeder Browser seit ~2016); ohne die Schrift greift der
+   Fallback der font-anzeige-Variable — kein TTF-Ballast im Paket. */
 @font-face {
     font-family: 'ProtestRevolution';
-    src: url('../fonts/ProtestRevolution-Regular.woff2') format('woff2'),
-         url('../fonts/ProtestRevolution-Regular.ttf') format('truetype');
+    src: url('../fonts/ProtestRevolution-Regular.woff2') format('woff2');
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -127,6 +127,8 @@ body {
 .pe-label { display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.8rem; color: var(--text-leise); }
 /* kleine Zwischenüberschrift innerhalb eines Konto-Blocks (z. B. „Versand (SMTP)") */
 .pe-unterzeile { margin-top: 0.35rem; font-size: 0.72rem; color: var(--text-leise); }
+/* Haken-Zeile (Checkbox + Text nebeneinander, z. B. „ist CalDAV-Collection") */
+.pe-haken { flex-direction: row; align-items: center; gap: 0.4rem; }
 .pe-feld { width: 100%; }
 .pe-fehler { margin: 0.25rem 0 0; color: var(--fehler); font-size: 0.85rem; }
 .pe-konten { display: flex; flex-direction: column; gap: 0.6rem; }
@@ -389,8 +391,10 @@ body {
 .ff-topnav-link.aktiv { color: var(--akzent); background: rgba(240, 162, 58, .16); }
 .ff-topnav-link.ff-abmelden { margin-left: 8px; border: 1px solid rgba(255, 255, 255, .22); }
 
-/* Zweite, schmale App-Steuerleiste (Dashboard-Name links, Werkzeuge rechts) */
-.subtoolbar { height: auto; padding: 0.4rem 0.9rem; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+/* Zweite, schmale App-Steuerleiste (Dashboard-Name links, Werkzeuge rechts).
+   .toolbar.subtoolbar (doppelte Klasse): muss die feste .toolbar-Höhe sicher übersteuern,
+   sonst laufen umbrochene Werkzeug-Zeilen (Handy) über die erste Fläche des Boards. */
+.toolbar.subtoolbar { height: auto; min-height: var(--toolbar-h); padding: 0.4rem 0.9rem; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
 .subtoolbar-name { color: var(--text-leise); font-size: 0.9rem; font-family: var(--font-anzeige); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .subtoolbar .toolbar-rechts { flex-wrap: wrap; gap: 0.4rem; }
 
@@ -804,6 +808,13 @@ body.zieht { user-select: none; cursor: grabbing; }
 }
 
 /* Telefonbuch */
+/* Externes Adressbuch (CardDAV): schreibgeschützter, leiser Abschnitt über den lokalen Kontakten */
+.w-tel-extern { display: flex; flex-direction: column; gap: 0.4rem; }
+.w-tel-extern-liste { display: flex; flex-direction: column; gap: 0.25rem; }
+.w-tel-extern-kontakt { display: flex; flex-wrap: wrap; gap: 0.15rem 0.6rem; padding: 0.3rem 0.5rem; border: 1px solid var(--linie); border-radius: var(--radius-xs); background: var(--bg-2); }
+.w-tel-extern-name { color: var(--text); font-size: 0.88rem; }
+.w-tel-extern-meta { color: var(--text-leise); font-size: 0.82rem; }
+
 .w-tel-liste { display: flex; flex-direction: column; gap: 0.5rem; }
 .w-tel-karte {
     display: flex;
@@ -909,6 +920,9 @@ body.zieht { user-select: none; cursor: grabbing; }
 
 /* Kalender (zentrale Adressen, Status via gemeinsame Bausteine) */
 .w-kal { display: flex; flex-direction: column; gap: 0.5rem; flex: 1 1 auto; min-height: 0; }
+/* Termin-Anlegen-Formular (CalDAV): gestapelte Felder, Knöpfe nebeneinander */
+.w-kal-neu { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.5rem; border: 1px solid var(--linie); border-radius: var(--radius-xs); background: var(--bg-2); }
+.w-kal-neu-knoepfe { display: flex; gap: 0.4rem; }
 .w-kal-wahl { flex: 1 1 auto; min-width: 0; }
 .w-kal-liste { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 0.4rem; }
 .w-kal-eintrag {

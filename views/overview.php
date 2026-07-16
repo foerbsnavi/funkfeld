@@ -16,10 +16,13 @@ $version  = (string) (store_read(PULT_ROOT . '/version.json', [])['version'] ?? 
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>Funkfeld — Dashboards</title>
+    <meta name="theme-color" content="#0e1116">
     <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="assets/img/icon-180.png">
+    <link rel="manifest" href="manifest.webmanifest">
     <link rel="stylesheet" href="assets/css/pult.css?v=<?= e($ver) ?>">
 </head>
-<body class="app-body" data-csrf="<?= e(csrf_token()) ?>">
+<body class="app-body" data-csrf="<?= e(csrf_token()) ?>" data-ver="<?= e($ver) ?>">
 
     <?php include __DIR__ . '/topbar.php'; ?>
 
@@ -66,6 +69,7 @@ $version  = (string) (store_read(PULT_ROOT . '/version.json', [])['version'] ?? 
             <div class="uebersicht-import">
                 <button type="button" class="w-sekundaer-btn" id="dash-import-btn">Dashboard importieren (XML)</button>
                 <input type="file" id="dash-import-datei" accept=".xml,text/xml,application/xml" hidden>
+                <a class="w-sekundaer-btn" href="api.php?action=backup_zip" download>Komplett-Backup (ZIP)</a>
                 <span id="import-status" class="uebersicht-meldung" aria-live="polite"></span>
             </div>
             <div class="uebersicht-version">

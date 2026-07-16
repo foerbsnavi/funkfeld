@@ -1,7 +1,14 @@
 {
-    "version": "1.4.0",
-    "date": "2026-07-02",
+    "version": "1.5.0",
+    "date": "2026-07-16",
     "changelog": [
+        {
+            "version": "1.5.0",
+            "date": "2026-07-16",
+            "changes": [
+                "(Änderungen ergänzen)"
+            ]
+        },
         {
             "version": "1.4.0",
             "date": "2026-07-02",

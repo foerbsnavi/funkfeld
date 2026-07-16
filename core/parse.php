@@ -135,3 +135,144 @@ function pult_rss_parse(string $xml): array
     }
     return $eintraege;
 }
+
+/* ---------------------------------------------------------------------------
+   CardDAV/CalDAV (seit 1.5.0): Multistatus-Antworten auswerten, vCards lesen,
+   VEVENT-ICS bauen. Gleiche XML-Sicherheitslinie wie pult_rss_parse:
+   DOCTYPE → ablehnen (kein XXE/Entity-Ausbreitung), LIBXML_NONET.
+   --------------------------------------------------------------------------- */
+
+/**
+ * Zieht aus einer DAV-Multistatus-Antwort alle Textinhalte eines Feldes
+ * (z. B. address-data/calendar-data) — Namespace-fest, präfix-unabhängig.
+ */
+function pult_dav_datenfelder(string $xml, string $ns, string $feld): array
+{
+    $xml = trim($xml);
+    if ($xml === '' || preg_match('/<!DOCTYPE/i', $xml)) {
+        return [];
+    }
+    $vorher = libxml_use_internal_errors(true);
+    $doc = new DOMDocument();
+    $ok = $doc->loadXML($xml, LIBXML_NONET);
+    libxml_clear_errors();
+    libxml_use_internal_errors($vorher);
+    if (!$ok) {
+        return [];
+    }
+    $aus = [];
+    foreach ($doc->getElementsByTagNameNS($ns, $feld) as $el) {
+        $t = trim((string) $el->textContent);
+        if ($t !== '') {
+            $aus[] = $t;
+        }
+    }
+    return $aus;
+}
+
+/** Entfaltet vCard-/ICS-Zeilen (RFC-Folding: Folgezeile beginnt mit Space/Tab). */
+function pult_vcard_entfalten(string $text): array
+{
+    $roh = preg_split('/\r\n|\n|\r/', $text) ?: [];
+    $zeilen = [];
+    foreach ($roh as $z) {
+        if (($z !== '' && ($z[0] === ' ' || $z[0] === "\t")) && $zeilen) {
+            $zeilen[count($zeilen) - 1] .= substr($z, 1);
+        } else {
+            $zeilen[] = $z;
+        }
+    }
+    return $zeilen;
+}
+
+/** vCard-Escaping zurücknehmen — wie pult_ics_text: \n → Umbruch, \, \; \\ → Zeichen. */
+function pult_vcard_text(string $s): string
+{
+    return str_replace(['\\n', '\\N', '\\,', '\\;', '\\\\'], ["\n", "\n", ',', ';', '\\'], $s);
+}
+
+/**
+ * Liest vCards (3.0/4.0) aus einem Text (eine oder mehrere) und liefert Kontakte
+ * im Telefonbuch-Format: [{name, telefon, email, notiz}]. Grenzen wie blocks.php
+ * (max. 500 Kontakte; Name 200, Telefon 60, E-Mail 200, Notiz 500 Zeichen).
+ */
+function pult_vcard_parse(string $text): array
+{
+    $kontakte = [];
+    $akt = null;
+    foreach (pult_vcard_entfalten($text) as $zeile) {
+        $z = trim($zeile);
+        if ($z === '') {
+            continue;
+        }
+        if (strcasecmp($z, 'BEGIN:VCARD') === 0) {
+            $akt = ['name' => '', 'telefon' => '', 'email' => '', 'notiz' => ''];
+            continue;
+        }
+        if (strcasecmp($z, 'END:VCARD') === 0) {
+            if (is_array($akt) && ($akt['name'] !== '' || $akt['telefon'] !== '' || $akt['email'] !== '')) {
+                $kontakte[] = $akt;
+                if (count($kontakte) >= 500) {
+                    break;
+                }
+            }
+            $akt = null;
+            continue;
+        }
+        if ($akt === null) {
+            continue;
+        }
+        $pos = strpos($z, ':');
+        if ($pos === false) {
+            continue;
+        }
+        // Property-Name ohne Parameter (TEL;TYPE=CELL → TEL), Gruppen-Präfix weg (item1.TEL → TEL)
+        $kopf = strtoupper(substr($z, 0, $pos));
+        $wert = pult_vcard_text(substr($z, $pos + 1));
+        $prop = preg_replace('/^[^.]*\./', '', $kopf);
+        $prop = explode(';', $prop)[0];
+        if ($prop === 'FN' && $akt['name'] === '') {
+            $akt['name'] = mb_substr(trim($wert), 0, 200);
+        } elseif ($prop === 'TEL' && $akt['telefon'] === '') {
+            // 4.0 schreibt oft tel:+49… als URI — das Schema gehört nicht in die Anzeige
+            $akt['telefon'] = mb_substr(trim(preg_replace('/^tel:/i', '', $wert)), 0, 60);
+        } elseif ($prop === 'EMAIL' && $akt['email'] === '') {
+            $akt['email'] = mb_substr(trim(preg_replace('/^mailto:/i', '', $wert)), 0, 200);
+        } elseif ($prop === 'NOTE' && $akt['notiz'] === '') {
+            $akt['notiz'] = mb_substr(trim($wert), 0, 500);
+        }
+    }
+    return $kontakte;
+}
+
+/** ICS-Escaping für Textwerte (Komma, Semikolon, Backslash, Zeilenumbruch). */
+function pult_ics_escape(string $s): string
+{
+    return str_replace(['\\', ';', ',', "\n"], ['\\\\', '\\;', '\\,', '\\n'], str_replace("\r", '', $s));
+}
+
+/**
+ * Baut eine minimale VEVENT-ICS (UTC, wie beim Lesen: Anzeige lokal, Speicherung Z).
+ * $start/$ende sind Unix-Timestamps. Rückgabe: [uid, ics-Text] — CRLF-Zeilenenden (RFC 5545).
+ */
+function pult_vevent_ics(string $titel, int $start, int $ende, string $ort = ''): array
+{
+    $uid = bin2hex(random_bytes(16)) . '@funkfeld';
+    $z = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Funkfeld//DE',
+        'BEGIN:VEVENT',
+        'UID:' . $uid,
+        'DTSTAMP:' . gmdate('Ymd\THis\Z'),
+        'DTSTART:' . gmdate('Ymd\THis\Z', $start),
+        'DTEND:' . gmdate('Ymd\THis\Z', $ende),
+        'SUMMARY:' . pult_ics_escape($titel),
+    ];
+    if ($ort !== '') {
+        $z[] = 'LOCATION:' . pult_ics_escape($ort);
+    }
+    $z[] = 'END:VEVENT';
+    $z[] = 'END:VCALENDAR';
+    return [$uid, implode("\r\n", $z) . "\r\n"];
+}

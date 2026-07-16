@@ -1186,4 +1186,11 @@
     // Wechsel zwischen Handy/Desktop live berücksichtigen: Layout-Klasse + Knopf neu setzen
     kompaktAbfrage.addEventListener('change', () => { ansichtAnwenden(); mobilPruefen(); });
     init();
+
+    // PWA: Service Worker registrieren. Die ?v=-Kennung (Asset-Cache-Buster aus app.php)
+    // macht die SW-URL je Release einzigartig — Update-Erkennung ohne Handarbeit.
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js?v=' + encodeURIComponent(document.body.dataset.ver || '0'))
+            .catch(() => { /* PWA ist Komfort — ohne SW läuft alles normal weiter */ });
+    }
 })();

@@ -14,7 +14,10 @@ $ver = (string) max((int) @filemtime(__DIR__ . '/../assets/css/pult.css'), 1);
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>Funkfeld — Anmelden</title>
+    <meta name="theme-color" content="#0e1116">
     <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="assets/img/icon-180.png">
+    <link rel="manifest" href="manifest.webmanifest">
     <link rel="stylesheet" href="assets/css/pult.css?v=<?= e($ver) ?>">
 </head>
 <body class="login-body">
