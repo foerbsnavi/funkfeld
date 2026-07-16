@@ -6,7 +6,12 @@
             "version": "1.5.0",
             "date": "2026-07-16",
             "changes": [
-                "(Änderungen ergänzen)"
+                "Funkfeld ist jetzt eine installierbare App (PWA): aufs Handy oder den Desktop legen, statische Dateien laden aus dem Cache, ohne Verbindung erscheint ein Offline-Hinweis.",
+                "Komplett-Backup: Ein Klick in der Dashboard-Übersicht sichert alle eigenen Dashboards samt Dateien und Einstellungen als ZIP (braucht die PHP-Erweiterung ZipArchive).",
+                "Telefonbuch kann Kontakte aus einem CardDAV-Adressbuch anzeigen (Nextcloud, Radicale, …) — schreibgeschützt über den lokalen Kontakten; Zugangsdaten verschlüsselt in den Einstellungen.",
+                "Kalender können als CalDAV-Collection eingebunden werden: private Kalender funktionieren jetzt mit Anmeldung (ohne öffentlichen ICS-Link), und ein „+ Termin“-Knopf legt Termine direkt an.",
+                "Die Live-Karte lädt Leaflet jetzt lokal statt von einem Fremd-Server (CDN) — funktioniert offline-fähig und ohne Drittanbieter; nur die Kartenkacheln kommen weiter aus dem Netz.",
+                "Kleineres: Werkzeugleiste überdeckt auf dem Handy nicht mehr die erste Fläche, Auslieferung komprimiert (gzip) auch für Selbst-Hoster, 800 KB weniger Paketgewicht (Schrift nur noch als WOFF2)."
             ]
         },
         {
