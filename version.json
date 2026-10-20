@@ -1,7 +1,15 @@
 {
-    "version": "1.5.1",
-    "date": "2026-07-16",
+    "version": "1.5.2",
+    "date": "2026-10-20",
     "changelog": [
+        {
+            "version": "1.5.2",
+            "date": "2026-10-20",
+            "changes": [
+                "Live-Karte repariert: OpenStreetMap zeigte „Access blocked“, weil die Kachel-Abrufe ohne Referer ankamen. Die Kartenebenen senden jetzt nur die Domain mit (referrerPolicy strict-origin) und nutzen die empfohlene OSM-Adresse.",
+                "README auf Stand 1.5 gebracht."
+            ]
+        },
         {
             "version": "1.5.1",
             "date": "2026-07-16",

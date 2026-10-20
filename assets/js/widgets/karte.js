@@ -129,10 +129,13 @@
                 status.hidden = true;
                 ansageGeladen();
                 map = L.map(karteEl, { zoomControl: true }).setView([state.ansicht.lat, state.ansicht.lng], state.ansicht.zoom);
-                osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    { maxZoom: 19, attribution: '© OpenStreetMap-Mitwirkende' });
+                // referrerPolicy je Kachel: Die App setzt "same-origin" — ohne Referer
+                // liefert OSM nur das Bild "Access blocked" (Kachel-Nutzungsrichtlinie).
+                // Übertragen wird nur der Ursprung (Domain), nie Pfad oder Dashboard-ID.
+                osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    { maxZoom: 19, attribution: '© OpenStreetMap-Mitwirkende', referrerPolicy: 'strict-origin' });
                 sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                    { maxZoom: 19, attribution: '© Esri' });
+                    { maxZoom: 19, attribution: '© Esri', referrerPolicy: 'strict-origin' });
                 aktuellBase = (state.basis === 'satellit' ? sat : osm).addTo(map);
 
                 // Eigener Layer-Umschalter (SVG) statt L.control.layers → kein externes Bild (CSP-frei)

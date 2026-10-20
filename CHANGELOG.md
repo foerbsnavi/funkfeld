@@ -4,6 +4,14 @@ Alle nennenswerten Änderungen an Funkfeld werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/),
 Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.5.2] – 2026-10-20
+
+### Behoben
+- **Live-Karte zeigte „Access blocked“ statt Kartenkacheln:** Die App setzt `Referrer-Policy: same-origin`, dadurch kamen die Kachel-Abrufe ohne Referer bei OpenStreetMap an — und OSM liefert dann laut Kachel-Nutzungsrichtlinie nur ein Sperrbild („No referer sent“). Beide Kachel-Ebenen (OSM und Esri) senden jetzt gezielt `referrerPolicy: strict-origin`, also nur die Domain, nie Pfad oder Dashboard-ID. Die OSM-Adresse nutzt außerdem den empfohlenen Hostnamen `tile.openstreetmap.org` ohne Subdomain.
+
+### Geändert
+- README auf Stand 1.5 (Neuigkeiten-Fläche, Mail mit Versand, CalDAV/CardDAV, Rechtestufen, Backup, PWA).
+
 ## [1.5.1] – 2026-07-16
 
 ### Behoben

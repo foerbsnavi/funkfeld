@@ -19,15 +19,16 @@ das Pult, an dem ihr sie organisiert. Selbst gehostet oder online.
 | **Notiz** | Freies Textfeld |
 | **Aufgaben** | Checkliste mit Haken |
 | **Links** | Schnellzugriff-Sammlung |
-| **Tabelle** | Kleine bearbeitbare Tabelle |
-| **Telefonbuch** | Kontakte (Name, Telefon, E-Mail, Notiz) |
+| **Tabelle** | Kleine bearbeitbare Tabelle, CSV-Import/-Export |
+| **Telefonbuch** | Kontakte (Name, Telefon, E-Mail, Notiz), vCard/CSV-Import/-Export, externe Adressbücher per CardDAV (lesend) |
 | **Dateien** | Datei-Zwischenlager (hoch-/runterladen) |
 | **Uhr** | Live-Zeit und Datum |
 | **Wetter** | Aktuelles Wetter + 3-Tage-Vorschau (OpenWeatherMap) |
-| **Kalender** | Nächste Termine aus einem ICS-Feed |
-| **Mail** | IMAP-Posteingang (nur lesen) |
+| **Kalender** | Nächste Termine aus ICS-Feeds oder CalDAV-Kalendern (auch privat, mit Anmeldung); „+ Termin“ legt Termine per CalDAV an |
+| **Mail** | IMAP-Posteingang mehrerer Konten, Schreiben und Antworten per SMTP |
 | **RSS** | Schlagzeilen aus einem Feed |
 | **Chat** | Gemeinsamer Verlauf als Sprechblasen |
+| **Neuigkeiten** | Automatischer Verlauf aller Änderungen im Dashboard, dazu neue Mails und RSS-Beiträge |
 | **Live-Karte** | Leaflet-Karte mit Markern & Strichen, in Echtzeit für alle |
 | **Livestream** | Webcam-/Standbild von einer URL, automatisch aktualisiert |
 | **Wirtschaft** | Gold · Bitcoin · Euro · US-Dollar als Verlauf (1 Woche – 5 Jahre) |
@@ -38,16 +39,17 @@ das Pult, an dem ihr sie organisiert. Selbst gehostet oder online.
 - **Drei Ansichten:** *Frei* (ziehen, stapeln, Größe ändern), *Raster* (gleichmäßiges Gitter), *Clips* (magnetisches Einrasten mit Trenn-Griffen).
 - **Mehrere Dashboards** je Konto, mit Übersicht.
 - **3 Anordnungsbänke** – Layouts speichern und durchschalten.
-- **Festsetzen** per Schloss (Kiosk-Ansicht) · **Teilen** einzelner Dashboards per Link (Echtzeit) · **Export/Import** als XML.
+- **Festsetzen** per Schloss (Kiosk-Ansicht) · **Teilen** einzelner Dashboards per Link (Echtzeit) mit den Rechtestufen *Nur ansehen*, *Mitarbeiten* und *Alles* · **Export/Import** als XML · **Komplett-Backup** als ZIP.
 - **Live-Sync** auf jedem Gerät; am Handy automatisch einspaltig.
+- **Installierbar als App (PWA)** — eigenes Symbol, eigenes Fenster, Offline-Hinweis.
 
 ## Installation
 
-1. [ZIP herunterladen](https://funkfeld.brosemedien.de/files/funkfeld_latest.zip), entpacken und den Inhalt per FTP hochladen.
+1. Das ZIP von der [Download-Seite](https://funkfeld.brosemedien.de/download) holen (oder dieses Repository klonen), entpacken und den Inhalt per FTP hochladen.
 2. Ordner `data/` beschreibbar machen.
 3. `install.php` im Browser aufrufen und ein Passwort setzen.
 
-**Voraussetzungen:** PHP 7.4+ mit `json` (Standard); `imap` nur fürs Mail-Widget, `zip` fürs Selbst-Update. Apache mit `.htaccess`. Keine Datenbank. Karte/Livestream/Wirtschaft brauchen eine Internetverbindung.
+**Voraussetzungen:** PHP 7.4+ mit `json` (Standard); `imap` nur fürs Mail-Widget, `zip` für Selbst-Update und Backup. Apache mit `.htaccess`. Keine Datenbank. Karte/Livestream/Wirtschaft brauchen eine Internetverbindung.
 
 ## Aktualisieren
 
@@ -59,7 +61,7 @@ Alles hinter Login (Passwort gehasht, Brute-Force-Bremse). CSRF-Schutz auf schre
 
 ## Technik
 
-Reines **PHP + Vanilla-JavaScript + CSS**. Keine Datenbank (JSON-Dateien), kein Build-Schritt, kein Framework. Karte: [Leaflet](https://leafletjs.com/) + OpenStreetMap; Wirtschaftsdaten schlüssellos von CoinGecko und der EZB (Frankfurter).
+Reines **PHP + Vanilla-JavaScript + CSS**. Keine Datenbank (JSON-Dateien), kein Build-Schritt, kein Framework. Karte: [Leaflet](https://leafletjs.com/) (lokal mitgeliefert) + OpenStreetMap; Wirtschaftsdaten schlüssellos von CoinGecko und der EZB (Frankfurter).
 
 ```
 core/    Programmcode (Auth, Blocks, Storage, Feeds, Mail, Krypto, Dashboards)
